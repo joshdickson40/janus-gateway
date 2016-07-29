@@ -549,6 +549,7 @@ typedef struct janus_audiobridge_room {
 	gchar *record_file;			/* Path of the recording file */
 	FILE *recording;			/* File to record the room into */
 	gint64 record_lastupdate;	/* Time when we last updated the wav header */
+	uint32_t record_counter;		/* Record counter for segmented recordings */
 	gboolean destroy;			/* Value to flag the room for destruction */
 	GHashTable *participants;	/* Map of participants */
 	GThread *thread;			/* Mixer thread for this room */
@@ -2664,7 +2665,7 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 		if(audiobridge->record_file)
 			g_snprintf(filename, 255, "%s", audiobridge->record_file);
 		else
-			g_snprintf(filename, 255, "/tmp/janus-audioroom-%"SCNu64".wav", audiobridge->room_id);
+			g_snprintf(filename, 255, "/tmp/janus-audioroom-%"SCNu64"-0.wav", audiobridge->room_id);
 		audiobridge->recording = fopen(filename, "wb");
 		if(audiobridge->recording == NULL) {
 			JANUS_LOG(LOG_WARN, "Recording requested, but could NOT open file %s for writing...\n", filename);
@@ -2691,6 +2692,7 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 			}
 			fflush(audiobridge->recording);
 			audiobridge->record_lastupdate = janus_get_monotonic_time();
+			audiobridge->record_counter = 1;
 		}
 	}
 
@@ -2804,6 +2806,48 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 					fflush(audiobridge->recording);
 					fseek(audiobridge->recording, 0, SEEK_END);
 				}
+
+				/* Close the file */
+
+
+				/* Open a new file and write the header */
+				char filename[255];
+				g_snprintf(filename, 255, "/tmp/janus-audioroom-%"SCNu64"-%"PRIu32".wav", audiobridge->room_id, audiobridge->record_counter);
+
+				JANUS_LOG(LOG_INFO, "Opening a new file to write...\n");
+				JANUS_LOG(LOG_INFO, "/tmp/janus-audioroom-%"SCNu64"-%"PRIu32".wav\n", audiobridge->room_id, audiobridge->record_counter);
+				// audiobridge->recording = fopen(filename, "wb");
+				// if(audiobridge->recording == NULL) {
+				// 	JANUS_LOG(LOG_WARN, "Recording requested, but could NOT open file %s for writing...\n", filename);
+				// } else {
+				// 	JANUS_LOG(LOG_INFO, "Recording requested, opened file %s for writing\n", filename);
+				// 	/* Write WAV header */
+				// 	wav_header header = {
+				// 		{'R', 'I', 'F', 'F'},
+				// 		0,
+				// 		{'W', 'A', 'V', 'E'},
+				// 		{'f', 'm', 't', ' '},
+				// 		16,
+				// 		1,
+				// 		1,
+				// 		audiobridge->sampling_rate,
+				// 		audiobridge->sampling_rate * 2,
+				// 		2,
+				// 		16,
+				// 		{'d', 'a', 't', 'a'},
+				// 		0
+				// 	};
+				// 	if(fwrite(&header, 1, sizeof(header), audiobridge->recording) != sizeof(header)) {
+				// 		JANUS_LOG(LOG_ERR, "Error writing WAV header...\n");
+				// 	}
+				// 	fflush(audiobridge->recording);
+				// 	audiobridge->record_lastupdate = janus_get_monotonic_time();
+				// 	audiobridge->record_counter = 0;
+				// }
+
+
+				/* Fix any counters... */
+				audiobridge->record_counter++;
 			}
 		}
 		/* Send proper packet to each participant (remove own contribution) */
