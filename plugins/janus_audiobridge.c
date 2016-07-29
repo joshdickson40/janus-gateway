@@ -385,6 +385,7 @@ record_file =	/path/to/recording.wav (where to save the recording)
 #include <jansson.h>
 #include <opus/opus.h>
 #include <sys/time.h>
+#include <stdio.h>
 
 #include "../debug.h"
 #include "../apierror.h"
@@ -669,7 +670,7 @@ typedef struct wav_header {
 #define	BUFFER_SAMPLES	8000
 #define	OPUS_SAMPLES	160
 #define USE_FEC			0
-#define DEFAULT_COMPLEXITY	4
+#define DEFAULT_COMPLEXITY	6
 
 
 /* Error codes */
@@ -686,6 +687,9 @@ typedef struct wav_header {
 #define JANUS_AUDIOBRIDGE_ERROR_UNAUTHORIZED	489
 #define JANUS_AUDIOBRIDGE_ERROR_ID_EXISTS		490
 #define JANUS_AUDIOBRIDGE_ERROR_ALREADY_JOINED	491
+
+/* Batched recorder size */
+#define JANUS_AUDIOBRIDGE_SAMPLES_PER_FILE 100;
 
 
 /* AudioBridge watchdog/garbage collector (sort of) */
@@ -2690,6 +2694,9 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 	memset(sumBuffer, 0, 960*4);
 	memset(outBuffer, 0, 960*2);
 
+	/* The number of times we write the frame before opening a new file to write */
+	int writeCounter = 0;
+
 	/* Timer */
 	struct timeval now, before;
 	gettimeofday(&before, NULL);
@@ -2774,6 +2781,48 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 				/* FIXME Smoothen/Normalize instead of truncating? */
 				outBuffer[i] = buffer[i];
 			}
+
+			/* if we have written the desired number of frames to the file, first we must close the */
+			/* file and then open its replacement */
+			if(writeCounter > JANUS_AUDIOBRIDGE_SAMPLES_PER_FILE) {
+				/* close the currently in use file */
+				// fclose(audiobridge->recording);
+				//
+				// /* open the new file */
+				// audiobridge->recording = fopen("myfilename.wav", "wb");
+				// // TODO - this needs an incrementation in the name of the file...
+				//
+				// /* build the WAV header */
+				// wav_header header = {
+				// 	{'R', 'I', 'F', 'F'},
+				// 	0,
+				// 	{'W', 'A', 'V', 'E'},
+				// 	{'f', 'm', 't', ' '},
+				// 	16,
+				// 	1,
+				// 	1,
+				// 	audiobridge->sampling_rate,
+				// 	audiobridge->sampling_rate * 2,
+				// 	2,
+				// 	16,
+				// 	{'d', 'a', 't', 'a'},
+				// 	0
+				// };
+				//
+				// /* write the WAV header */
+				// if(fwrite(&header, 1, sizeof(header), audiobridge->recording) != sizeof(header)) {
+				// 	JANUS_LOG(LOG_ERR, "Error writing WAV header...\n");
+				// }
+				//
+				JANUS_LOG(LOG_VERB, "Resetting write coutner...\n");
+
+				/* reset the WAV counter */
+				writeCounter = 0;
+			}
+
+			/* log that we are writing something... */
+			JANUS_LOG(LOG_VERB, "Writing an OPUS frame to file\n");
+
 			fwrite(outBuffer, sizeof(opus_int16), samples, audiobridge->recording);
 		}
 		/* Send proper packet to each participant (remove own contribution) */
