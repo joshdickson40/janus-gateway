@@ -689,7 +689,7 @@ typedef struct wav_header {
 #define JANUS_AUDIOBRIDGE_ERROR_ALREADY_JOINED	491
 
 /* Batched recorder size */
-#define JANUS_AUDIOBRIDGE_SAMPLES_PER_FILE 100;
+#define JANUS_AUDIOBRIDGE_SAMPLES_PER_FILE 100
 
 
 /* AudioBridge watchdog/garbage collector (sort of) */
