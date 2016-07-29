@@ -670,7 +670,7 @@ typedef struct wav_header {
 #define	BUFFER_SAMPLES	8000
 #define	OPUS_SAMPLES	160
 #define USE_FEC			0
-#define DEFAULT_COMPLEXITY	6
+#define DEFAULT_COMPLEXITY	4
 
 
 /* Error codes */
@@ -847,7 +847,7 @@ int janus_audiobridge_init(janus_callbacks *callback, const char *config_path) {
 				case 16000:
 				case 24000:
 				case 48000:
-					JANUS_LOG(LOG_VERB, "Sampling rate for mixing: %"SCNu32"\n", audiobridge->sampling_rate);
+					JANUS_LOG(LOG_INFO, "Sampling rate for mixing: %"SCNu32"\n", audiobridge->sampling_rate);
 					break;
 				default:
 					JANUS_LOG(LOG_ERR, "Unsupported sampling rate %"SCNu32"...\n", audiobridge->sampling_rate);
@@ -1990,8 +1990,8 @@ static void *janus_audiobridge_handler(void *data) {
 				} else if(audiobridge->sampling_rate == 48000) {
 					opus_encoder_ctl(participant->encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_FULLBAND));
 				} else {
-					JANUS_LOG(LOG_WARN, "Unsupported sampling rate %d, setting 16kHz\n", audiobridge->sampling_rate);
-					audiobridge->sampling_rate = 16000;
+					JANUS_LOG(LOG_WARN, "Unsupported sampling rate %d, setting 48kHz\n", audiobridge->sampling_rate);
+					audiobridge->sampling_rate = 48000;
 					opus_encoder_ctl(participant->encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_WIDEBAND));
 				}
 				/* FIXME This settings should be configurable */
@@ -2333,8 +2333,8 @@ static void *janus_audiobridge_handler(void *data) {
 				} else if(audiobridge->sampling_rate == 48000) {
 					opus_encoder_ctl(new_encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_FULLBAND));
 				} else {
-					JANUS_LOG(LOG_WARN, "Unsupported sampling rate %d, setting 16kHz\n", audiobridge->sampling_rate);
-					audiobridge->sampling_rate = 16000;
+					JANUS_LOG(LOG_WARN, "Unsupported sampling rate %d, setting 48kHz\n", audiobridge->sampling_rate);
+					audiobridge->sampling_rate = 48000;
 					opus_encoder_ctl(new_encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_WIDEBAND));
 				}
 				/* FIXME This settings should be configurable */
@@ -2822,8 +2822,10 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 				writeCounter = 0;
 			}
 
+			writeCounter++;
+
 			/* log that we are writing something... */
-			JANUS_LOG(LOG_INFO, "Writing an OPUS frame to file\n");
+			// JANUS_LOG(LOG_INFO, "Writing an OPUS frame to file\n");
 
 			fwrite(outBuffer, sizeof(opus_int16), samples, audiobridge->recording);
 		}
