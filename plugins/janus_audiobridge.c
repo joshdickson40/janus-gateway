@@ -2804,11 +2804,10 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 					fseek(audiobridge->recording, 40, SEEK_SET);
 					fwrite(&size, sizeof(uint32_t), 1, audiobridge->recording);
 					fflush(audiobridge->recording);
-					fseek(audiobridge->recording, 0, SEEK_END);
 				}
 
 				/* Close the file */
-
+				fclose(audiobridge->recording);
 
 				/* Open a new file and write the header */
 				char filename[255];
@@ -2816,38 +2815,38 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 
 				JANUS_LOG(LOG_INFO, "Opening a new file to write...\n");
 				JANUS_LOG(LOG_INFO, "/tmp/janus-audioroom-%"SCNu64"-%"PRIu32".wav\n", audiobridge->room_id, audiobridge->record_counter);
-				// audiobridge->recording = fopen(filename, "wb");
-				// if(audiobridge->recording == NULL) {
-				// 	JANUS_LOG(LOG_WARN, "Recording requested, but could NOT open file %s for writing...\n", filename);
-				// } else {
-				// 	JANUS_LOG(LOG_INFO, "Recording requested, opened file %s for writing\n", filename);
-				// 	/* Write WAV header */
-				// 	wav_header header = {
-				// 		{'R', 'I', 'F', 'F'},
-				// 		0,
-				// 		{'W', 'A', 'V', 'E'},
-				// 		{'f', 'm', 't', ' '},
-				// 		16,
-				// 		1,
-				// 		1,
-				// 		audiobridge->sampling_rate,
-				// 		audiobridge->sampling_rate * 2,
-				// 		2,
-				// 		16,
-				// 		{'d', 'a', 't', 'a'},
-				// 		0
-				// 	};
-				// 	if(fwrite(&header, 1, sizeof(header), audiobridge->recording) != sizeof(header)) {
-				// 		JANUS_LOG(LOG_ERR, "Error writing WAV header...\n");
-				// 	}
-				// 	fflush(audiobridge->recording);
-				// 	audiobridge->record_lastupdate = janus_get_monotonic_time();
-				// 	audiobridge->record_counter = 0;
-				// }
 
+				audiobridge->recording = fopen(filename, "wb");
+				if(audiobridge->recording == NULL) {
+					JANUS_LOG(LOG_WARN, "Recording requested, but could NOT open file %s for writing...\n", filename);
+				} else {
+					JANUS_LOG(LOG_INFO, "Recording requested, opened file %s for writing\n", filename);
+					/* Write WAV header */
+					wav_header header = {
+						{'R', 'I', 'F', 'F'},
+						0,
+						{'W', 'A', 'V', 'E'},
+						{'f', 'm', 't', ' '},
+						16,
+						1,
+						1,
+						audiobridge->sampling_rate,
+						audiobridge->sampling_rate * 2,
+						2,
+						16,
+						{'d', 'a', 't', 'a'},
+						0
+					};
+					if(fwrite(&header, 1, sizeof(header), audiobridge->recording) != sizeof(header)) {
+						JANUS_LOG(LOG_ERR, "Error writing WAV header...\n");
+					}
+					fflush(audiobridge->recording);
+					audiobridge->record_lastupdate = janus_get_monotonic_time();
 
-				/* Fix any counters... */
-				audiobridge->record_counter++;
+					/* Fix any counters... */
+					audiobridge->record_counter++;
+				}
+
 			}
 		}
 		/* Send proper packet to each participant (remove own contribution) */
