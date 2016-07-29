@@ -1248,7 +1248,8 @@ struct janus_plugin_result *janus_audiobridge_handle_message(janus_plugin_sessio
 				g_snprintf(error_cause, 512, "We currently only support 16kHz (wideband) as a sampling rate for audio rooms, %"SCNu32" TBD...", audiobridge->sampling_rate);
 				goto error;
 		}
-		audiobridge->record = FALSE;
+		JANUS_LOG(LOG_INFO, "Sampling rate for mixing: %"SCNu32"\n", audiobridge->sampling_rate);
+		audiobridge->record = TRUE;
 		if(record && json_is_true(record))
 			audiobridge->record = TRUE;
 		if(recfile)
