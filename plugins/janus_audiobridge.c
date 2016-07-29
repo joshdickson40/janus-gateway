@@ -860,9 +860,11 @@ int janus_audiobridge_init(janus_callbacks *callback, const char *config_path) {
 			if(pin != NULL && pin->value != NULL) {
 				audiobridge->room_pin = g_strdup(pin->value);
 			}
-			audiobridge->record = FALSE;
-			if(record && record->value && janus_is_true(record->value))
-				audiobridge->record = TRUE;
+			// audiobridge->record = FALSE;
+			// if(record && record->value && janus_is_true(record->value))
+			/* force always true */
+			audiobridge->record = TRUE;
+
 			if(recfile && recfile->value)
 				audiobridge->record_file = g_strdup(recfile->value);
 			audiobridge->recording = NULL;
@@ -1676,7 +1678,7 @@ void janus_audiobridge_incoming_rtp(janus_plugin_session *handle, int video, cha
 		} else {
 			/* Make sure we're not queueing too many packets: if so, get rid of the older ones */
 			if(g_list_length(participant->inbuf) >= DEFAULT_PREBUFFERING*2) {
-				JANUS_LOG(LOG_WARN, "Too many packets in queue (%d > %d), removing older ones\n",
+				JANUS_LOG(LOG_DBG, "Too many packets in queue (%d > %d), removing older ones\n",
 					g_list_length(participant->inbuf), DEFAULT_PREBUFFERING*2);
 				while(g_list_length(participant->inbuf) > DEFAULT_PREBUFFERING*2) {
 					/* Remove this packet: it's too old */
@@ -2663,7 +2665,7 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 		if(audiobridge->recording == NULL) {
 			JANUS_LOG(LOG_WARN, "Recording requested, but could NOT open file %s for writing...\n", filename);
 		} else {
-			JANUS_LOG(LOG_VERB, "Recording requested, opened file %s for writing\n", filename);
+			JANUS_LOG(LOG_INFO, "Recording requested, opened file %s for writing\n", filename);
 			/* Write WAV header */
 			wav_header header = {
 				{'R', 'I', 'F', 'F'},
@@ -2814,14 +2816,14 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 				// 	JANUS_LOG(LOG_ERR, "Error writing WAV header...\n");
 				// }
 				//
-				JANUS_LOG(LOG_VERB, "Resetting write coutner...\n");
+				JANUS_LOG(LOG_INFO, "Resetting write coutner...\n");
 
 				/* reset the WAV counter */
 				writeCounter = 0;
 			}
 
 			/* log that we are writing something... */
-			JANUS_LOG(LOG_VERB, "Writing an OPUS frame to file\n");
+			JANUS_LOG(LOG_INFO, "Writing an OPUS frame to file\n");
 
 			fwrite(outBuffer, sizeof(opus_int16), samples, audiobridge->recording);
 		}
