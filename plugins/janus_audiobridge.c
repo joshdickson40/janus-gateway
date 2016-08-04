@@ -2674,7 +2674,7 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 		if(audiobridge->record_file)
 			g_snprintf(filename, 255, "%s", audiobridge->record_file);
 		else
-			g_snprintf(filename, 255, "/home/ubuntu/janus-tmp/janus-audioroom-%"s"-0.wav", audiobridge->record_id);
+			g_snprintf(filename, 255, "/home/ubuntu/janus-tmp/janus-audioroom-"%s"-0.wav", audiobridge->record_id);
 		audiobridge->recording = fopen(filename, "wb");
 		if(audiobridge->recording == NULL) {
 			JANUS_LOG(LOG_WARN, "Recording requested, but could NOT open file %s for writing...\n", filename);
@@ -2820,10 +2820,10 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 
 				/* Open a new file and write the header */
 				char filename[255];
-				g_snprintf(filename, 255, "/home/ubuntu/janus-tmp/janus-audioroom-%"s"-%"PRIu32".wav", audiobridge->record_id, audiobridge->record_counter);
+				g_snprintf(filename, 255, "/home/ubuntu/janus-tmp/janus-audioroom-"%s"-%"PRIu32".wav", audiobridge->record_id, audiobridge->record_counter);
 
 				JANUS_LOG(LOG_INFO, "Opening a new file to write...\n");
-				JANUS_LOG(LOG_INFO, "/home/ubuntu/janus-tmp/janus-audioroom-%"s"-%"PRIu32".wav\n", audiobridge->record_id, audiobridge->record_counter);
+				JANUS_LOG(LOG_INFO, "/home/ubuntu/janus-tmp/janus-audioroom-"%s"-%"PRIu32".wav\n", audiobridge->record_id, audiobridge->record_counter);
 
 				audiobridge->recording = fopen(filename, "wb");
 				if(audiobridge->recording == NULL) {
