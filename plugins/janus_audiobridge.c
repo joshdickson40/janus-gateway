@@ -468,6 +468,7 @@ static struct janus_json_parameter create_parameters[] = {
 	{"is_private", JANUS_JSON_BOOL, 0},
 	{"sampling", JSON_INTEGER, JANUS_JSON_PARAM_POSITIVE},
 	{"record", JANUS_JSON_BOOL, 0},
+	{"id", JSON_STRING, 0},
 	{"record_file", JSON_STRING, 0},
 	{"permanent", JANUS_JSON_BOOL, 0},
 	{"room", JSON_INTEGER, JANUS_JSON_PARAM_POSITIVE}
@@ -547,6 +548,7 @@ typedef struct janus_audiobridge_room {
 	uint32_t sampling_rate;		/* Sampling rate of the mix (e.g., 16000 for wideband; can be 8, 12, 16, 24 or 48kHz) */
 	gboolean record;			/* Whether this room has to be recorded or not */
 	gchar *record_file;			/* Path of the recording file */
+	gchar *record_id;			/* Recording id */
 	FILE *recording;			/* File to record the room into */
 	gint64 record_lastupdate;	/* Time when we last updated the wav header */
 	uint32_t record_counter;		/* Record counter for segmented recordings */
@@ -743,6 +745,7 @@ void *janus_audiobridge_watchdog(void *data) {
 					g_free(audiobridge->room_secret);
 					g_free(audiobridge->room_pin);
 					g_free(audiobridge->record_file);
+					g_free(audiobridge->record_id);
 					g_hash_table_destroy(audiobridge->participants);
 					g_free(audiobridge);
 					/* Move on */
@@ -813,6 +816,7 @@ int janus_audiobridge_init(janus_callbacks *callback, const char *config_path) {
 			janus_config_item *pin = janus_config_get_item(cat, "pin");
 			janus_config_item *record = janus_config_get_item(cat, "record");
 			janus_config_item *recfile = janus_config_get_item(cat, "record_file");
+			janus_config_item *recId = janus_config_get_item(cat, "id");
 			if(sampling == NULL || sampling->value == NULL) {
 				JANUS_LOG(LOG_ERR, "Can't add the audio room, missing mandatory information...\n");
 				cl = cl->next;
@@ -863,6 +867,8 @@ int janus_audiobridge_init(janus_callbacks *callback, const char *config_path) {
 				audiobridge->record = TRUE;
 			if(recfile && recfile->value)
 				audiobridge->record_file = g_strdup(recfile->value);
+			if(recId && recId->value)
+				audiobridge->record_id = g_strdup(recId->value);
 			audiobridge->recording = NULL;
 			audiobridge->destroy = 0;
 			audiobridge->participants = g_hash_table_new_full(g_int64_hash, g_int64_equal, (GDestroyNotify)g_free, NULL);
@@ -1160,6 +1166,7 @@ struct janus_plugin_result *janus_audiobridge_handle_message(janus_plugin_sessio
 		json_t *sampling = json_object_get(root, "sampling");
 		json_t *record = json_object_get(root, "record");
 		json_t *recfile = json_object_get(root, "record_file");
+		json_t *recId = json_object_get(root, "id");
 		json_t *permanent = json_object_get(root, "permanent");
 		gboolean save = permanent ? json_is_true(permanent) : FALSE;
 		if(save && config == NULL) {
@@ -1251,6 +1258,8 @@ struct janus_plugin_result *janus_audiobridge_handle_message(janus_plugin_sessio
 			audiobridge->record = TRUE;
 		if(recfile)
 			audiobridge->record_file = g_strdup(json_string_value(recfile));
+		if(recId)
+			audiobridge->record_id = g_strdup(json_string_value(recId));
 		audiobridge->recording = NULL;
 		audiobridge->destroy = 0;
 		audiobridge->participants = g_hash_table_new_full(g_int64_hash, g_int64_equal, (GDestroyNotify)g_free, NULL);
@@ -2665,7 +2674,7 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 		if(audiobridge->record_file)
 			g_snprintf(filename, 255, "%s", audiobridge->record_file);
 		else
-			g_snprintf(filename, 255, "/home/ubuntu/janus-tmp/janus-audioroom-%"SCNu64"-0.wav", audiobridge->room_id);
+			g_snprintf(filename, 255, "/home/ubuntu/janus-tmp/janus-audioroom-%"s"-0.wav", audiobridge->record_id);
 		audiobridge->recording = fopen(filename, "wb");
 		if(audiobridge->recording == NULL) {
 			JANUS_LOG(LOG_WARN, "Recording requested, but could NOT open file %s for writing...\n", filename);
@@ -2811,10 +2820,10 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 
 				/* Open a new file and write the header */
 				char filename[255];
-				g_snprintf(filename, 255, "/home/ubuntu/janus-tmp/janus-audioroom-%"SCNu64"-%"PRIu32".wav", audiobridge->room_id, audiobridge->record_counter);
+				g_snprintf(filename, 255, "/home/ubuntu/janus-tmp/janus-audioroom-%"s"-%"PRIu32".wav", audiobridge->record_id, audiobridge->record_counter);
 
 				JANUS_LOG(LOG_INFO, "Opening a new file to write...\n");
-				JANUS_LOG(LOG_INFO, "/home/ubuntu/janus-tmp/janus-audioroom-%"SCNu64"-%"PRIu32".wav\n", audiobridge->room_id, audiobridge->record_counter);
+				JANUS_LOG(LOG_INFO, "/home/ubuntu/janus-tmp/janus-audioroom-%"s"-%"PRIu32".wav\n", audiobridge->record_id, audiobridge->record_counter);
 
 				audiobridge->recording = fopen(filename, "wb");
 				if(audiobridge->recording == NULL) {
