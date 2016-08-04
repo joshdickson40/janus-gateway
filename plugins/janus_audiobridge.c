@@ -2789,9 +2789,9 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 				outBuffer[i] = buffer[i];
 			}
 			fwrite(outBuffer, sizeof(opus_int16), samples, audiobridge->recording);
-			/* Every 5 seconds we update the wav header */
+			/* Every 3 seconds we update the wav header */
 			gint64 now = janus_get_monotonic_time();
-			if(now - audiobridge->record_lastupdate >= 5*G_USEC_PER_SEC) {
+			if(now - audiobridge->record_lastupdate >= 3*G_USEC_PER_SEC) {
 				audiobridge->record_lastupdate = now;
 				/* Update the length in the header */
 				fseek(audiobridge->recording, 0, SEEK_END);
