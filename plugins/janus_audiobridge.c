@@ -1976,7 +1976,7 @@ static void *janus_audiobridge_handler(void *data) {
 			/* Opus encoder */
 			int error = 0;
 			if(participant->encoder == NULL) {
-				participant->encoder = opus_encoder_create(audiobridge->sampling_rate, 1, OPUS_APPLICATION_VOIP, &error);
+				participant->encoder = opus_encoder_create(audiobridge->sampling_rate, 1, OPUS_APPLICATION_AUDIO, &error);
 				if(error != OPUS_OK) {
 					janus_mutex_unlock(&audiobridge->mutex);
 					janus_mutex_unlock(&rooms_mutex);
@@ -1997,7 +1997,7 @@ static void *janus_audiobridge_handler(void *data) {
 				} else if(audiobridge->sampling_rate == 24000) {
 					opus_encoder_ctl(participant->encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_SUPERWIDEBAND));
 				} else if(audiobridge->sampling_rate == 48000) {
-					opus_encoder_ctl(participant->encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_APPLICATION_AUDIO));
+					opus_encoder_ctl(participant->encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_FULLBAND));
 				} else {
 					JANUS_LOG(LOG_WARN, "Unsupported sampling rate %d, setting 16kHz\n", audiobridge->sampling_rate);
 					audiobridge->sampling_rate = 16000;
@@ -2321,7 +2321,7 @@ static void *janus_audiobridge_handler(void *data) {
 			if(old_audiobridge->sampling_rate != audiobridge->sampling_rate) {
 				/* Create a new one that takes into account the sampling rate we want now */
 				int error = 0;
-				OpusEncoder *new_encoder = opus_encoder_create(audiobridge->sampling_rate, 1, OPUS_APPLICATION_VOIP, &error);
+				OpusEncoder *new_encoder = opus_encoder_create(audiobridge->sampling_rate, 1, OPUS_APPLICATION_AUDIO, &error);
 				if(error != OPUS_OK) {
 					if(new_encoder)
 						opus_encoder_destroy(new_encoder);
