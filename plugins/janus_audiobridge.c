@@ -673,7 +673,7 @@ typedef struct wav_header {
 #define	BUFFER_SAMPLES	8000
 #define	OPUS_SAMPLES	160
 #define USE_FEC			0
-#define DEFAULT_COMPLEXITY	1
+#define DEFAULT_COMPLEXITY	4
 
 
 /* Error codes */
@@ -1997,7 +1997,7 @@ static void *janus_audiobridge_handler(void *data) {
 				} else if(audiobridge->sampling_rate == 24000) {
 					opus_encoder_ctl(participant->encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_SUPERWIDEBAND));
 				} else if(audiobridge->sampling_rate == 48000) {
-					opus_encoder_ctl(participant->encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_APPLICATION_AUDIO));
+					opus_encoder_ctl(participant->encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_FULLBAND));
 				} else {
 					JANUS_LOG(LOG_WARN, "Unsupported sampling rate %d, setting 16kHz\n", audiobridge->sampling_rate);
 					audiobridge->sampling_rate = 16000;
