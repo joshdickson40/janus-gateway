@@ -456,7 +456,7 @@ record_file =	/path/to/recording.wav (where to save the recording)
 	]
 }
 \endverbatim
- * 
+ *  
  * \ingroup plugins
  * \ref plugins
  */
