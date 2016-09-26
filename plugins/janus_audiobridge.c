@@ -1129,7 +1129,7 @@ void janus_audiobridge_create_session(janus_plugin_session *handle, int *error) 
 	if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
 		*error = -1;
 		return;
-	}
+	}	
 	janus_audiobridge_session *session = (janus_audiobridge_session *)g_malloc0(sizeof(janus_audiobridge_session));
 	session->handle = handle;
 	session->started = FALSE;
