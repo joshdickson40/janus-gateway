@@ -1892,7 +1892,7 @@ void janus_audiobridge_setup_media(janus_plugin_session *handle) {
 void janus_audiobridge_incoming_rtp(janus_plugin_session *handle, int video, char *buf, int len) {
 	if(handle == NULL || handle->stopped || g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
 		return;
-	janus_audiobridge_session *session = (janus_audiobridge_session *)handle->plugin_handle;
+	janus_audiobridge_session *session = (janus_audiobridge_session *)handle->plugin_handle;	
 	if(!session || session->destroyed || session->stopping || !session->participant)
 		return;
 	janus_audiobridge_participant *participant = (janus_audiobridge_participant *)session->participant;
@@ -2300,7 +2300,7 @@ static void *janus_audiobridge_handler(void *data) {
 					JANUS_LOG(LOG_ERR, "Got error %d (%s) trying to launch the participant thread...\n", error->code, error->message ? error->message : "??");
 				}
 			}
-
+			
 			/* Done */
 			session->participant = participant;
 			g_hash_table_insert(audiobridge->participants, janus_uint64_dup(participant->user_id), participant);
