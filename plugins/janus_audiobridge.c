@@ -1220,7 +1220,7 @@ struct janus_plugin_result *janus_audiobridge_handle_message(janus_plugin_sessio
 	char error_cause[512];
 	json_t *root = message;
 	json_t *response = NULL;
-
+	
 	if(message == NULL) {
 		JANUS_LOG(LOG_ERR, "No message??\n");
 		error_code = JANUS_AUDIOBRIDGE_ERROR_NO_MESSAGE;
@@ -1228,7 +1228,7 @@ struct janus_plugin_result *janus_audiobridge_handle_message(janus_plugin_sessio
 		goto plugin_response;
 	}
 
-	janus_audiobridge_session *session = (janus_audiobridge_session *)handle->plugin_handle;
+	janus_audiobridge_session *session = (janus_audiobridge_session *)handle->plugin_handle;	
 	if(!session) {
 		JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
 		error_code = JANUS_AUDIOBRIDGE_ERROR_UNKNOWN_ERROR;
