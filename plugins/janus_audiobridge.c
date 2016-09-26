@@ -1622,7 +1622,7 @@ struct janus_plugin_result *janus_audiobridge_handle_message(janus_plugin_sessio
 		json_object_set_new(response, "participants", list);
 		goto plugin_response;
 	} else if(!strcasecmp(request_text, "resetdecoder")) {
-		/* Mark the Opus decoder for the participant invalid and recreate it */
+		/* Mark the Opus decoder for the participant invalid and recreate it */	
 		janus_audiobridge_participant *participant = (janus_audiobridge_participant *)session->participant;
 		if(participant == NULL || participant->room == NULL) {
 			JANUS_LOG(LOG_ERR, "Can't reset (not in a room)\n");
@@ -1874,7 +1874,7 @@ void janus_audiobridge_setup_media(janus_plugin_session *handle) {
 	JANUS_LOG(LOG_INFO, "WebRTC media is now available\n");
 	if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
 		return;
-	janus_audiobridge_session *session = (janus_audiobridge_session *)handle->plugin_handle;
+	janus_audiobridge_session *session = (janus_audiobridge_session *)handle->plugin_handle;	
 	if(!session) {
 		JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
 		return;
