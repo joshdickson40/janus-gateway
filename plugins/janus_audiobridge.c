@@ -2833,7 +2833,7 @@ static void *janus_audiobridge_handler(void *data) {
 			/* Did the peer negotiate video? */
 			if(strstr(msg_sdp, "m=video") != NULL) {
 				/* If so, reject it */
-				g_strlcat(sdp, "m=video 0 RTP/SAVPF 0\r\n", 1024);
+				g_strlcat(sdp, "m=video 0 RTP/SAVPF 0\r\n", 1024);				
 			}
 			/* Did the peer negotiate data channels? */
 			if(strstr(msg_sdp, "DTLS/SCTP") != NULL) {
@@ -2889,7 +2889,7 @@ static void *janus_audiobridge_handler(void *data) {
 		msg = NULL;
 
 		continue;
-
+		
 error:
 		{
 			/* Prepare JSON error event */
