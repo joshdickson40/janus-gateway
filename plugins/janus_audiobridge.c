@@ -1148,8 +1148,8 @@ void janus_audiobridge_destroy_session(janus_plugin_session *handle, int *error)
 	if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
 		*error = -1;
 		return;
-	}
-	janus_audiobridge_session *session = (janus_audiobridge_session *)handle->plugin_handle;
+	}	
+	janus_audiobridge_session *session = (janus_audiobridge_session *)handle->plugin_handle; 
 	if(!session) {
 		JANUS_LOG(LOG_ERR, "No AudioBridge session associated with this handle...\n");
 		*error = -2;
