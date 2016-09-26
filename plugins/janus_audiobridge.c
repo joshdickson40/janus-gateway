@@ -456,7 +456,7 @@ record_file =	/path/to/recording.wav (where to save the recording)
 	]
 }
 \endverbatim
- *
+ * 
  * \ingroup plugins
  * \ref plugins
  */
@@ -518,7 +518,7 @@ static janus_plugin janus_audiobridge_plugin =
 		.get_name = janus_audiobridge_get_name,
 		.get_author = janus_audiobridge_get_author,
 		.get_package = janus_audiobridge_get_package,
-
+		
 		.create_session = janus_audiobridge_create_session,
 		.handle_message = janus_audiobridge_handle_message,
 		.setup_media = janus_audiobridge_setup_media,
