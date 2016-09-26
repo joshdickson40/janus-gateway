@@ -799,7 +799,7 @@ typedef struct wav_header {
 #define DEFAULT_PREBUFFERING	6
 
 
-/* Opus settings */
+/* Opus settings */		
 #define	BUFFER_SAMPLES	8000
 #define	OPUS_SAMPLES	160
 #define USE_FEC			0
@@ -922,7 +922,7 @@ int janus_audiobridge_init(janus_callbacks *callback, const char *config_path) {
 	if(config != NULL)
 		janus_config_print(config);
 	janus_mutex_init(&config_mutex);
-
+	
 	rooms = g_hash_table_new_full(g_int64_hash, g_int64_equal, (GDestroyNotify)g_free, NULL);
 	janus_mutex_init(&rooms_mutex);
 	sessions = g_hash_table_new(NULL, NULL);
