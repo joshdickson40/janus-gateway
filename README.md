@@ -229,7 +229,7 @@ or on the command line:
 
 	<installdir>/bin/janus --help
 	
-	janus 0.2.0
+	janus 0.2.1
 
 	Usage: janus [OPTIONS]...
 
@@ -287,6 +287,7 @@ or on the command line:
                                   default)
 	-A, --token-auth              Enable token-based authentication for all
                                   requests  (default=off)
+	-e, --event-handlers          Enable event handlers  (default=off)
 
 Options passed through the command line have the precedence on those
 specified in the configuration file. To start the gateway, simply run:
