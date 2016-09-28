@@ -93,7 +93,7 @@ static size_t janus_sampleehv_write_data(void *buffer, size_t size, size_t nmemb
 }
 
 /* Util for signing authenticated API POST requests */
-unsigned char* hmac_sha256(const void *key, int keylen, const unsigned char *data, int datalen,
+static unsigned char* hmac_sha256(const void *key, int keylen, const unsigned char *data, int datalen,
 	unsigned char *result, unsigned int* resultlen) {
     return HMAC(EVP_sha256(), key, keylen, data, datalen, result, resultlen);
 }
