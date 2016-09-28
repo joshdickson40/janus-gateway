@@ -550,8 +550,7 @@ static void *janus_sampleevh_handler(void *data) {
 		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
 		  }
 
-			JANUS_LOG(LOG_INFO, "Sig: %s\n", digest);
-			JANUS_LOG(LOG_INFO, "Sig length: %p\n", (void*)&digest_len);
+			JANUS_LOG(LOG_INFO, "Digest length: %u\n", digest_len);
 
 			JANUS_LOG(LOG_INFO, "Got %s\n", res_hexstring);
 
