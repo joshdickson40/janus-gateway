@@ -555,6 +555,13 @@ static void *janus_sampleevh_handler(void *data) {
 			JANUS_LOG(LOG_INFO, "Got %s\n", res_hexstring);
 
 
+			char signature_header[100];
+
+			strcpy(signature_header, "X-Janus-Signature: ");
+			strcpy(signature_header, res_hexstring);
+
+			JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
+
 			JANUS_LOG(LOG_INFO, "SHA completed...\n");
 
 
@@ -563,8 +570,8 @@ static void *janus_sampleevh_handler(void *data) {
 			//     return HMAC(EVP_sha256(), key, keylen, data, datalen, result, resultlen);
 			// }
 
-			headers = curl_slist_append(headers, "X-Janus-Key: testkey");
-			headers = curl_slist_append(headers, "X-Janus-Signature: %s", res_hexstring);
+			// headers = curl_slist_append(headers, "X-Janus-Key: testkey");
+			// headers = curl_slist_append(headers, "X-Janus-Signature: %s", res_hexstring);
 		}
 
 
