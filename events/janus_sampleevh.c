@@ -92,12 +92,6 @@ static size_t janus_sampleehv_write_data(void *buffer, size_t size, size_t nmemb
 	return size*nmemb;
 }
 
-/* Util for signing authenticated API POST requests */
-static unsigned char* hmac_sha256(const void *key, int keylen, const unsigned char *data, int datalen,
-	unsigned char *result, unsigned int* resultlen) {
-    return HMAC(EVP_sha256(), key, keylen, data, datalen, result, resultlen);
-}
-
 /* Plugin implementation */
 int janus_sampleevh_init(const char *config_path) {
 	if(g_atomic_int_get(&stopping)) {
@@ -533,8 +527,10 @@ static void *janus_sampleevh_handler(void *data) {
 		/* Any credentials? */
 		if(auth_key != NULL && auth_secret != NULL) {
 			/* Sign event_text with our private key */
-			unsigned char *result = NULL;
-			unsigned int *resultlen = 0;
+			unsigned char *digest = NULL;
+			unsigned int* digest_len = 0;
+
+			unsigned char* result;
 
 			JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
@@ -544,7 +540,8 @@ static void *janus_sampleevh_handler(void *data) {
 
 
 
-			hmac_sha256(auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), result, resultlen);
+
+			HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
 
 			JANUS_LOG(LOG_INFO, "Sig: %s\n", result);
