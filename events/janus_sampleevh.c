@@ -564,7 +564,7 @@ static void *janus_sampleevh_handler(void *data) {
 			// }
 
 			headers = curl_slist_append(headers, "X-Janus-Key: testkey");
-			headers = curl_slist_append(headers, "X-Janus-Signature: testsig");
+			headers = curl_slist_append(headers, "X-Janus-Signature: %s", res_hexstring);
 		}
 
 
