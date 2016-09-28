@@ -539,7 +539,7 @@ static void *janus_sampleevh_handler(void *data) {
 
 			JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
-			// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+			JANUS_LOG(LOG_INFO, "Secret length: %d\n", strlen(auth_secret));
 
 
 			// static unsigned char* hmac_sha256(const void *key, int keylen, const unsigned char *data, int datalen,
