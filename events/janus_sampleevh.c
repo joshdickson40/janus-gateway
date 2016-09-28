@@ -128,8 +128,7 @@ int janus_sampleevh_init(const char *config_path) {
 				item = janus_config_get_item_drilldown(config, "general", "auth_key");
 				auth_key = (item && item->value) ? g_strdup(item->value) : NULL;
 				item = janus_config_get_item_drilldown(config, "general", "auth_secret");
-				// auth_secret = (item && item->value) ? g_strdup(item->value) : NULL;
-				auth_secret = "f27d509f65f422957916";
+				auth_secret = (item && item->value) ? g_strdup(item->value) : NULL;
 				/* Which events should we subscribe to? */
 				item = janus_config_get_item_drilldown(config, "general", "events");
 				if(item && item->value) {
@@ -545,7 +544,7 @@ static void *janus_sampleevh_handler(void *data) {
 
 
 
-			result = HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
+			result = HMAC(EVP_sha256(), "f27d509f65f422957916", strlen("f27d509f65f422957916"), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
 			for (i = 0; i < result_len; i++) {
 		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
