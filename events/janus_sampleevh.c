@@ -570,8 +570,8 @@ static void *janus_sampleevh_handler(void *data) {
 			//     return HMAC(EVP_sha256(), key, keylen, data, datalen, result, resultlen);
 			// }
 
-			// headers = curl_slist_append(headers, "X-Janus-Key: testkey");
-			// headers = curl_slist_append(headers, "X-Janus-Signature: %s", res_hexstring);
+			headers = curl_slist_append(headers, "X-Janus-Key: testkey");
+			headers = curl_slist_append(headers, "X-Janus-Signature: %s", signature_header);
 		}
 
 
