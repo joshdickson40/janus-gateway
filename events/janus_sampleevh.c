@@ -544,8 +544,8 @@ static void *janus_sampleevh_handler(void *data) {
 			HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
 
-			JANUS_LOG(LOG_INFO, "Sig: %s\n", result);
-			JANUS_LOG(LOG_INFO, "Sig length: %p\n", (void*)&resultlen);
+			JANUS_LOG(LOG_INFO, "Sig: %s\n", digest);
+			JANUS_LOG(LOG_INFO, "Sig length: %p\n", (void*)&digest_len);
 
 
 			JANUS_LOG(LOG_INFO, "SHA completed...\n");
