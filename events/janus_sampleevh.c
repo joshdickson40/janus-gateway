@@ -553,7 +553,7 @@ static void *janus_sampleevh_handler(void *data) {
 			JANUS_LOG(LOG_INFO, "Sig: %s\n", digest);
 			JANUS_LOG(LOG_INFO, "Sig length: %p\n", (void*)&digest_len);
 
-			printf("Got %s\n", res_hexstring);
+			JANUS_LOG(LOG_INFO, "Got %s\n", res_hexstring);
 
 
 			JANUS_LOG(LOG_INFO, "SHA completed...\n");
