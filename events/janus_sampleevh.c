@@ -128,7 +128,8 @@ int janus_sampleevh_init(const char *config_path) {
 				item = janus_config_get_item_drilldown(config, "general", "auth_key");
 				auth_key = (item && item->value) ? g_strdup(item->value) : NULL;
 				item = janus_config_get_item_drilldown(config, "general", "auth_secret");
-				auth_secret = (item && item->value) ? g_strdup(item->value) : NULL;
+				// auth_secret = (item && item->value) ? g_strdup(item->value) : NULL;
+				auth_secret = "f27d509f65f422957916";
 				/* Which events should we subscribe to? */
 				item = janus_config_get_item_drilldown(config, "general", "events");
 				if(item && item->value) {
