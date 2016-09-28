@@ -533,9 +533,8 @@ static void *janus_sampleevh_handler(void *data) {
 		/* Any credentials? */
 		if(auth_key != NULL && auth_secret != NULL) {
 			/* Sign event_text with our private key */
-			char *result = NULL;
-			int resultlen = -1;
-
+			const unsigned char *result = NULL;
+			unsigned int resultlen = -1;
 
 			JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
