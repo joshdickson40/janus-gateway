@@ -516,7 +516,7 @@ static void *janus_sampleevh_handler(void *data) {
 		}
 
 		/* Since this a simple plugin, it does the same for all events: so just convert to string... */
-		char *event_text = json_dumps(output, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
+		char *event_text = json_dumps(output, JSON_COMPACT);
 		/* ... and send via HTTP POST */
 		CURLcode res;
 		CURL *curl = curl_easy_init();
@@ -533,9 +533,9 @@ static void *janus_sampleevh_handler(void *data) {
 		/* Any credentials? */
 		if(auth_key != NULL && auth_secret != NULL) {
 			/* Sign event_text with our private key */
-			// static char *result;
-			// int resultlen = -1;
-			// char *sha = hmac_sha256(auth_secret, len(auth_secret), event_text, len(event_text), result, len(result));
+			char *result;
+			int resultlen = -1;
+			// hmac_sha256(auth_secret, len(auth_secret), event_text, len(event_text), result, len(result));
 
 			JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
