@@ -529,8 +529,25 @@ static void *janus_sampleevh_handler(void *data) {
 		headers = curl_slist_append(headers, "Accept: application/json");
 		headers = curl_slist_append(headers, "Content-Type: application/json");
 		headers = curl_slist_append(headers, "charsets: utf-8");
-		headers = curl_slist_append(headers, "X-Janus-Key: testkey");
-		headers = curl_slist_append(headers, "X-Janus-Signature: testsig");
+
+		/* Any credentials? */
+		if(auth_key != NULL && auth_secret != NULL) {
+			/* Sign event_text with our private key */
+			static char *result;
+			int resultlen = -1;
+			char *sha = hmac_sha256(auth_secret, len(auth_secret), event_text, len(event_text), result, len(result));
+
+
+			// static unsigned char* hmac_sha256(const void *key, int keylen, const unsigned char *data, int datalen,
+			// 	unsigned char *result, unsigned int* resultlen) {
+			//     return HMAC(EVP_sha256(), key, keylen, data, datalen, result, resultlen);
+			// }
+
+			headers = curl_slist_append(headers, "X-Janus-Key: testkey");
+			headers = curl_slist_append(headers, "X-Janus-Signature: testsig");
+		}
+
+
 
 		/* Any credentials? */
 		// if(auth_key != NULL && auth_secret != NULL) {
