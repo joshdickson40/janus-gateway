@@ -531,6 +531,9 @@ static void *janus_sampleevh_handler(void *data) {
 			unsigned int* digest_len = 0;
 
 			unsigned char* result;
+			unsigned int result_len = 16;
+		  int i;
+		  static char res_hexstring[32];
 
 			JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
@@ -541,11 +544,16 @@ static void *janus_sampleevh_handler(void *data) {
 
 
 
-			HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
+			result = HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
+			for (i = 0; i < result_len; i++) {
+		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
+		  }
 
 			JANUS_LOG(LOG_INFO, "Sig: %s\n", digest);
 			JANUS_LOG(LOG_INFO, "Sig length: %p\n", (void*)&digest_len);
+
+			printf("Got %s\n", res_hexstring);
 
 
 			JANUS_LOG(LOG_INFO, "SHA completed...\n");
