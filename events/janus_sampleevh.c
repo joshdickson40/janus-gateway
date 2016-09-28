@@ -531,9 +531,9 @@ static void *janus_sampleevh_handler(void *data) {
 			unsigned int* digest_len = 0;
 
 			unsigned char* result;
-			unsigned int result_len = 16;
+			unsigned int result_len = 64;
 		  int i;
-		  static char res_hexstring[32];
+		  static char res_hexstring[128];
 
 			JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
