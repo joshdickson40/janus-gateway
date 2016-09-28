@@ -6,7 +6,7 @@
  * there to showcase how you can handle an event coming from the Janus core
  * or one of the plugins. This specific plugin forwards every event it receives
  * to a web server via an HTTP POST request, using libcurl.
- * 
+ *
  * \ingroup eventhandlers
  * \ref eventhandlers
  */
@@ -14,6 +14,8 @@
 #include "eventhandler.h"
 
 #include <curl/curl.h>
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
 
 #include "../debug.h"
 #include "../config.h"
@@ -55,7 +57,7 @@ static janus_eventhandler janus_sampleevh =
 		.get_name = janus_sampleevh_get_name,
 		.get_author = janus_sampleevh_get_author,
 		.get_package = janus_sampleevh_get_package,
-		
+
 		.incoming_event = janus_sampleevh_incoming_event,
 
 		.events_mask = JANUS_EVENT_TYPE_NONE
@@ -85,9 +87,15 @@ static void janus_sampleevh_event_free(json_t *event) {
 
 /* Web backend to send the events to */
 static char *backend = NULL;
-static char *backend_user = NULL, *backend_pwd = NULL;
+static char *auth_key = NULL, *auth_secret = NULL;
 static size_t janus_sampleehv_write_data(void *buffer, size_t size, size_t nmemb, void *userp) {
 	return size*nmemb;
+}
+
+/* Util for signing authenticated API POST requests */
+unsigned char* hmac_sha256(const void *key, int keylen, const unsigned char *data, int datalen,
+	unsigned char *result, unsigned int* resultlen) {
+    return HMAC(EVP_sha256(), key, keylen, data, datalen, result, resultlen);
 }
 
 /* Plugin implementation */
@@ -123,10 +131,10 @@ int janus_sampleevh_init(const char *config_path) {
 			} else {
 				backend = g_strdup(item->value);
 				/* Any credentials needed? */
-				item = janus_config_get_item_drilldown(config, "general", "backend_user");
-				backend_user = (item && item->value) ? g_strdup(item->value) : NULL;
-				item = janus_config_get_item_drilldown(config, "general", "backend_pwd");
-				backend_pwd = (item && item->value) ? g_strdup(item->value) : NULL;
+				item = janus_config_get_item_drilldown(config, "general", "auth_key");
+				auth_key = (item && item->value) ? g_strdup(item->value) : NULL;
+				item = janus_config_get_item_drilldown(config, "general", "auth_secret");
+				auth_secret = (item && item->value) ? g_strdup(item->value) : NULL;
 				/* Which events should we subscribe to? */
 				item = janus_config_get_item_drilldown(config, "general", "events");
 				if(item && item->value) {
@@ -197,7 +205,7 @@ int janus_sampleevh_init(const char *config_path) {
 
 	/* Initialize the events queue */
 	events = g_async_queue_new_full((GDestroyNotify) janus_sampleevh_event_free);
-	
+
 	g_atomic_int_set(&initialized, 1);
 
 	/* Launch the thread that will handle incoming events */
@@ -521,14 +529,19 @@ static void *janus_sampleevh_handler(void *data) {
 		headers = curl_slist_append(headers, "Accept: application/json");
 		headers = curl_slist_append(headers, "Content-Type: application/json");
 		headers = curl_slist_append(headers, "charsets: utf-8");
+		headers = curl_slist_append(headers, "X-Janus-Key: testkey");
+		headers = curl_slist_append(headers, "X-Janus-Signature: testsig");
+
+		/* Any credentials? */
+		// if(auth_key != NULL && auth_secret != NULL) {
+		// 	curl_easy_setopt(curl, CURLOPT_USERNAME, auth_key);
+		// 	curl_easy_setopt(curl, CURLOPT_PASSWORD, auth_secret);
+		// }
+
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, event_text);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, janus_sampleehv_write_data);
-		/* Any credentials? */
-		if(backend_user != NULL && backend_pwd != NULL) {
-			curl_easy_setopt(curl, CURLOPT_USERNAME, backend_user);
-			curl_easy_setopt(curl, CURLOPT_PASSWORD, backend_pwd);
-		}
+
 		/* Don't wait forever (let's say, 10 seconds) */
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
 		/* Send the request */

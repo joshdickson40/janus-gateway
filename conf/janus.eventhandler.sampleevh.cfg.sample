@@ -17,5 +17,5 @@ backend = http://your.webserver.here/and/a/path
 				; requests with an application/json payload. In case
 				; authentication is required to contact the backend, set
 				; the credentials as well (basic authentication only).
-;backend_user = myuser
-;backend_pwd = mypwd
+;auth_key = myuser
+;auth_secret = mypwd
