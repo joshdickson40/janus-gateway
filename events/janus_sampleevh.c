@@ -535,7 +535,7 @@ static void *janus_sampleevh_handler(void *data) {
 			/* Sign event_text with our private key */
 			char *result;
 			int resultlen = -1;
-			// hmac_sha256(auth_secret, len(auth_secret), event_text, len(event_text), result, len(result));
+			hmac_sha256(auth_secret, strlen(auth_secret), event_text, strlen(event_text), result, resultlen);
 
 			JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
