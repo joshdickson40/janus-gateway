@@ -581,6 +581,9 @@ static void *janus_sampleevh_handler(void *data) {
 			//
 			// headers = curl_slist_append(headers, "X-Janus-Key: testkey");
 			// headers = curl_slist_append(headers, signature_header);
+
+
+			JANUS_LOG(LOG_INFO, "HMAC op ended\n");
 		}
 
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
