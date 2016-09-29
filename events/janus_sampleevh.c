@@ -528,12 +528,6 @@ static void *janus_sampleevh_handler(void *data) {
 		/* Any credentials? */
 		if(auth_key != NULL && auth_secret != NULL) {
 			/* Sign event_text with our private key */
-			// unsigned char *digest = NULL;
-			// unsigned int* digest_len = 0;
-
-
-
-
 			char auth_secret_copy[strlen(auth_secret)];
 			strcpy(auth_secret_copy, auth_secret);
 
@@ -547,62 +541,29 @@ static void *janus_sampleevh_handler(void *data) {
 			// JANUS_LOG(LOG_INFO, "Text length: %zu\n", strlen(event_text));
 
 
-
-
 			// result = HMAC(EVP_sha256(), "f27d509f65f422957916", strlen("f27d509f65f422957916"), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
 			unsigned char* result = HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), NULL, NULL);
 
-			// JANUS_LOG(LOG_INFO, "@0 Key: %s\n", auth_key);
-			// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
-
-
 			unsigned int result_len = 32;
 		  char res_hexstring[64];
 
-			// JANUS_LOG(LOG_INFO, "@1 Key: %s\n", auth_key);
-			// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
-
 			unsigned int i;
-
-			// JANUS_LOG(LOG_INFO, "@2 Key: %s\n", auth_key);
-			// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
-
 			for (i = 0; i < result_len; i++) {
-				// JANUS_LOG(LOG_INFO, "@pre Key: %s\n", auth_key);
-				// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
-
 		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
-
-				// JANUS_LOG(LOG_INFO, "@post Key: %s\n", auth_key);
-				// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 		  }
 
-			JANUS_LOG(LOG_INFO, "Key: %s\n", auth_key);
-			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+			char signature_header[100];
 
-			// // JANUS_LOG(LOG_INFO, "Digest length: %u\n", digest_len);
-			//
-			// JANUS_LOG(LOG_INFO, "Got %s\n", res_hexstring);
-			//
-			//
-			// char signature_header[100];
-			//
-			// strcpy(signature_header, "X-Janus-Signature: ");
-			// strcat(signature_header, res_hexstring);
-			//
-			// JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
-			//
-			// JANUS_LOG(LOG_INFO, "SHA completed...\n");
-			//
-			//
-			// // static unsigned char* hmac_sha256(const void *key, int keylen, const unsigned char *data, int datalen,
-			// // 	unsigned char *result, unsigned int* resultlen) {
-			// //     return HMAC(EVP_sha256(), key, keylen, data, datalen, result, resultlen);
-			// // }
-			//
-			// headers = curl_slist_append(headers, "X-Janus-Key: testkey");
-			// headers = curl_slist_append(headers, signature_header);
+			strcpy(signature_header, "X-Janus-Signature: ");
+			strcat(signature_header, res_hexstring);
+
+			JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
+
+			JANUS_LOG(LOG_INFO, "SHA completed...\n");
+
+			headers = curl_slist_append(headers, "X-Janus-Key: testkey");
+			headers = curl_slist_append(headers, signature_header);
 
 
 			JANUS_LOG(LOG_INFO, "HMAC op ended\n");
