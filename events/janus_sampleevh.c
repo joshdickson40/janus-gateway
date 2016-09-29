@@ -542,7 +542,7 @@ static void *janus_sampleevh_handler(void *data) {
 			strcpy(key_header, "X-Janus-Key: ");
 			strcat(key_header, auth_key);
 
-			char signature_header[81];
+			char signature_header[82];
 			strcpy(signature_header, "X-Janus-Signature: ");
 			strcat(signature_header, res_hexstring);
 
