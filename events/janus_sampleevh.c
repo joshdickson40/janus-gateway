@@ -536,21 +536,23 @@ static void *janus_sampleevh_handler(void *data) {
 		  static char res_hexstring[64];
 
 			JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
+			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_key);
+			// JANUS_LOG(LOG_INFO, "Secret length: %zu\n", strlen(auth_secret));
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
-			JANUS_LOG(LOG_INFO, "Secret length: %zu\n", strlen(auth_secret));
-			JANUS_LOG(LOG_INFO, "Text: %s\n", event_text);
-			JANUS_LOG(LOG_INFO, "Text length: %zu\n", strlen(event_text));
+			// JANUS_LOG(LOG_INFO, "Secret length: %zu\n", strlen(auth_secret));
+			// JANUS_LOG(LOG_INFO, "Text: %s\n", event_text);
+			// JANUS_LOG(LOG_INFO, "Text length: %zu\n", strlen(event_text));
 
 
+			// result = HMAC(EVP_sha256(), "f27d509f65f422957916", strlen("f27d509f65f422957916"), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
-
-			result = HMAC(EVP_sha256(), "f27d509f65f422957916", strlen("f27d509f65f422957916"), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
+			result = HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
 			for (i = 0; i < result_len; i++) {
 		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
 		  }
 
-			JANUS_LOG(LOG_INFO, "Digest length: %u\n", digest_len);
+			// JANUS_LOG(LOG_INFO, "Digest length: %u\n", digest_len);
 
 			JANUS_LOG(LOG_INFO, "Got %s\n", res_hexstring);
 
