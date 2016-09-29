@@ -554,18 +554,17 @@ static void *janus_sampleevh_handler(void *data) {
 		  }
 
 			char signature_header[52];
+
 			strcpy(signature_header, "X-Janus-Signature: ");
 			strcat(signature_header, res_hexstring);
 
-			char key_header[100];
-			strcpy(key_header, "X-Janus-Key: ");
-			strcat(key_header, auth_key);
-
 			JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
+
 			JANUS_LOG(LOG_INFO, "SHA completed...\n");
 
-			headers = curl_slist_append(headers, key_header);
+			headers = curl_slist_append(headers, "X-Janus-Key: testkey");
 			headers = curl_slist_append(headers, signature_header);
+
 		}
 
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
