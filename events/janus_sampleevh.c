@@ -559,7 +559,7 @@ static void *janus_sampleevh_handler(void *data) {
 
 			char key_header[100];
 			strcpy(key_header, "X-Janus-Key: ");
-			strcat(key_header, signature_header);
+			strcat(key_header, auth_key);
 
 			JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
 			JANUS_LOG(LOG_INFO, "SHA completed...\n");
