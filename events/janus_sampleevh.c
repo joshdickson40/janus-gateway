@@ -553,7 +553,7 @@ static void *janus_sampleevh_handler(void *data) {
 		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
 		  }
 
-			char signature_header[100];
+			char signature_header[84];
 			strcpy(signature_header, "X-Janus-Signature: ");
 			strcat(signature_header, res_hexstring);
 
