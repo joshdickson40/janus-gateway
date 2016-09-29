@@ -559,6 +559,10 @@ static void *janus_sampleevh_handler(void *data) {
 
 			JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
 
+			char key_header[strlen(auth_key) + 14];
+			strcpy(key_header, "X-Janus-Key: ");
+			strcat(key_header, auth_key);
+
 			headers = curl_slist_append(headers, "X-Janus-Key: testkey");
 			headers = curl_slist_append(headers, signature_header);
 		}
