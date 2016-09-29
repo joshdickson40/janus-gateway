@@ -563,7 +563,7 @@ static void *janus_sampleevh_handler(void *data) {
 			strcpy(key_header, "X-Janus-Key: ");
 			strcat(key_header, auth_key);
 
-			headers = curl_slist_append(headers, "X-Janus-Key: testkey");
+			headers = curl_slist_append(headers, key_header);
 			headers = curl_slist_append(headers, signature_header);
 		}
 
