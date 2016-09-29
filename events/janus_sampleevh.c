@@ -531,8 +531,7 @@ static void *janus_sampleevh_handler(void *data) {
 			// unsigned int* digest_len = 0;
 
 			unsigned char* result;
-			unsigned int result_len = 32;
-		  static char res_hexstring[64];
+
 
 			char auth_secret_copy[strlen(auth_secret)];
 			strcpy(auth_secret_copy, auth_secret);
@@ -553,9 +552,12 @@ static void *janus_sampleevh_handler(void *data) {
 
 			result = HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), NULL, NULL);
 
+			unsigned int result_len = 32;
+		  static char res_hexstring[64];
+
 			int i;
 			for (i = 0; i < result_len; i++) {
-		    // sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
+		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
 		  }
 
 			// // JANUS_LOG(LOG_INFO, "Digest length: %u\n", digest_len);
