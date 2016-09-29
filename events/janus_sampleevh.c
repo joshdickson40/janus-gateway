@@ -553,34 +553,34 @@ static void *janus_sampleevh_handler(void *data) {
 
 			// result = HMAC(EVP_sha256(), "f27d509f65f422957916", strlen("f27d509f65f422957916"), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
-			result = HMAC(EVP_sha256(), auth_secret_copy, strlen(auth_secret_copy), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
-
-			for (i = 0; i < result_len; i++) {
-		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
-		  }
-
-			// JANUS_LOG(LOG_INFO, "Digest length: %u\n", digest_len);
-
-			JANUS_LOG(LOG_INFO, "Got %s\n", res_hexstring);
-
-
-			char signature_header[100];
-
-			strcpy(signature_header, "X-Janus-Signature: ");
-			strcat(signature_header, res_hexstring);
-
-			JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
-
-			JANUS_LOG(LOG_INFO, "SHA completed...\n");
-
-
-			// static unsigned char* hmac_sha256(const void *key, int keylen, const unsigned char *data, int datalen,
-			// 	unsigned char *result, unsigned int* resultlen) {
-			//     return HMAC(EVP_sha256(), key, keylen, data, datalen, result, resultlen);
-			// }
-
-			headers = curl_slist_append(headers, "X-Janus-Key: testkey");
-			headers = curl_slist_append(headers, signature_header);
+			// result = HMAC(EVP_sha256(), auth_secret_copy, strlen(auth_secret_copy), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
+			//
+			// for (i = 0; i < result_len; i++) {
+		  //   sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
+		  // }
+			//
+			// // JANUS_LOG(LOG_INFO, "Digest length: %u\n", digest_len);
+			//
+			// JANUS_LOG(LOG_INFO, "Got %s\n", res_hexstring);
+			//
+			//
+			// char signature_header[100];
+			//
+			// strcpy(signature_header, "X-Janus-Signature: ");
+			// strcat(signature_header, res_hexstring);
+			//
+			// JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
+			//
+			// JANUS_LOG(LOG_INFO, "SHA completed...\n");
+			//
+			//
+			// // static unsigned char* hmac_sha256(const void *key, int keylen, const unsigned char *data, int datalen,
+			// // 	unsigned char *result, unsigned int* resultlen) {
+			// //     return HMAC(EVP_sha256(), key, keylen, data, datalen, result, resultlen);
+			// // }
+			//
+			// headers = curl_slist_append(headers, "X-Janus-Key: testkey");
+			// headers = curl_slist_append(headers, signature_header);
 		}
 
 
