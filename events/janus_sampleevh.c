@@ -558,7 +558,7 @@ static void *janus_sampleevh_handler(void *data) {
 
 
 			unsigned int result_len = 32;
-		  static char res_hexstring[64];
+		  char res_hexstring[64];
 
 			JANUS_LOG(LOG_INFO, "@1 Key: %s\n", auth_key);
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
@@ -569,7 +569,13 @@ static void *janus_sampleevh_handler(void *data) {
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 
 			for (i = 0; i < result_len; i++) {
+				JANUS_LOG(LOG_INFO, "@pre Key: %s\n", auth_key);
+				JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+
 		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
+
+				JANUS_LOG(LOG_INFO, "@post Key: %s\n", auth_key);
+				JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 		  }
 
 			JANUS_LOG(LOG_INFO, "@3 Key: %s\n", auth_key);
