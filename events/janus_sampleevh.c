@@ -87,7 +87,8 @@ static void janus_sampleevh_event_free(json_t *event) {
 
 /* Web backend to send the events to */
 static char *backend = NULL;
-static char *auth_key = NULL, *auth_secret = NULL;
+static char *auth_key = NULL;
+static char *auth_secret = NULL;
 static size_t janus_sampleehv_write_data(void *buffer, size_t size, size_t nmemb, void *userp) {
 	return size*nmemb;
 }
