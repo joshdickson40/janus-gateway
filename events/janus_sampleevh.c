@@ -558,13 +558,15 @@ static void *janus_sampleevh_handler(void *data) {
 			strcat(signature_header, res_hexstring);
 
 			// JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
+			
+			headers = curl_slist_append(headers, signature_header);
 
 			char key_header[strlen(auth_key) + 14];
 			strcpy(key_header, "X-Janus-Key: ");
 			strcat(key_header, auth_key);
 
 			headers = curl_slist_append(headers, key_header);
-			headers = curl_slist_append(headers, signature_header);
+
 		}
 
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
