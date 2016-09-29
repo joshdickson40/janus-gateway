@@ -546,7 +546,7 @@ static void *janus_sampleevh_handler(void *data) {
 			strcpy(signature_header, "X-Janus-Signature: ");
 			strcat(signature_header, res_hexstring);
 
-			JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
+			// JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
 
 
 
