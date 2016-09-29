@@ -555,7 +555,7 @@ static void *janus_sampleevh_handler(void *data) {
 
 			int i;
 			for (i = 0; i < result_len; i++) {
-		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
+		    // sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
 		  }
 
 			// // JANUS_LOG(LOG_INFO, "Digest length: %u\n", digest_len);
