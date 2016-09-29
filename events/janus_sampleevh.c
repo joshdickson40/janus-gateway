@@ -551,7 +551,7 @@ static void *janus_sampleevh_handler(void *data) {
 
 			// result = HMAC(EVP_sha256(), "f27d509f65f422957916", strlen("f27d509f65f422957916"), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
-			unsigned char* result = HMAC(EVP_sha256(), auth_key, strlen(auth_key), (unsigned char*) event_text, strlen(event_text), NULL, NULL);
+			unsigned char* result = HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), NULL, NULL);
 
 			unsigned int result_len = 32;
 		  static char res_hexstring[64];
@@ -560,6 +560,9 @@ static void *janus_sampleevh_handler(void *data) {
 			for (i = 0; i < result_len; i++) {
 		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
 		  }
+
+			JANUS_LOG(LOG_INFO, "@564 Key: %s\n", auth_key);
+			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 
 			// // JANUS_LOG(LOG_INFO, "Digest length: %u\n", digest_len);
 			//
@@ -588,11 +591,14 @@ static void *janus_sampleevh_handler(void *data) {
 			JANUS_LOG(LOG_INFO, "HMAC op ended\n");
 		}
 
+		JANUS_LOG(LOG_INFO, "@594 Key: %s\n", auth_key);
+		JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, event_text);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, janus_sampleehv_write_data);
 
-		JANUS_LOG(LOG_INFO, "@595 Key: %s\n", auth_key);
+		JANUS_LOG(LOG_INFO, "@601 Key: %s\n", auth_key);
 		JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 
 		/* Don't wait forever (let's say, 10 seconds) */
@@ -603,7 +609,7 @@ static void *janus_sampleevh_handler(void *data) {
 			JANUS_LOG(LOG_ERR, "Couldn't relay event to the backend: %s\n", curl_easy_strerror(res));
 		} else {
 			JANUS_LOG(LOG_DBG, "Event sent!\n");
-			JANUS_LOG(LOG_INFO, "@606 Key: %s\n", auth_key);
+			JANUS_LOG(LOG_INFO, "@612 Key: %s\n", auth_key);
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 		}
 done:
