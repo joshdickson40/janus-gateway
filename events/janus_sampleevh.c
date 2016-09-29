@@ -528,21 +528,6 @@ static void *janus_sampleevh_handler(void *data) {
 		/* Any credentials? */
 		if(auth_key != NULL && auth_secret != NULL) {
 			/* Sign event_text with our private key */
-			// char auth_secret_copy[strlen(auth_secret)];
-			// strcpy(auth_secret_copy, auth_secret);
-
-			// JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
-			// JANUS_LOG(LOG_INFO, "Key: %s\n", auth_key);
-			// JANUS_LOG(LOG_INFO, "Secret length: %zu\n", strlen(auth_secret));
-			// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
-			// JANUS_LOG(LOG_INFO, "Secret copy: %s\n", auth_secret_copy);
-			// JANUS_LOG(LOG_INFO, "Secret length: %zu\n", strlen(auth_secret));
-			// JANUS_LOG(LOG_INFO, "Text: %s\n", event_text);
-			// JANUS_LOG(LOG_INFO, "Text length: %zu\n", strlen(event_text));
-
-
-			// result = HMAC(EVP_sha256(), "f27d509f65f422957916", strlen("f27d509f65f422957916"), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
-
 			unsigned char* result = HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), NULL, NULL);
 
 			unsigned int result_len = 32;
@@ -553,15 +538,17 @@ static void *janus_sampleevh_handler(void *data) {
 		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
 		  }
 
-			char signature_header[84];
+			char key_header[strlen(auth_key) + 14];
+			strcpy(key_header, "X-Janus-Key: ");
+			strcat(key_header, auth_key);
+
+			char signature_header[80];
 			strcpy(signature_header, "X-Janus-Signature: ");
 			strcat(signature_header, res_hexstring);
 
 			JANUS_LOG(LOG_INFO, "Sig header: %s\n", signature_header);
 
-			char key_header[strlen(auth_key) + 14];
-			strcpy(key_header, "X-Janus-Key: ");
-			strcat(key_header, auth_key);
+
 
 			headers = curl_slist_append(headers, key_header);
 			headers = curl_slist_append(headers, signature_header);
