@@ -527,17 +527,19 @@ static void *janus_sampleevh_handler(void *data) {
 
 		/* Any credentials? */
 		if(auth_key != NULL && auth_secret != NULL) {
-			/* Sign event_text with our private key */
-			unsigned char* result = HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), NULL, NULL);
+			/* Generate HMAC signature */
+			unsigned char* result = HMAC(EVP_sha256(), auth_secret, strlen(auth_secret),
+				(unsigned char*) event_text, strlen(event_text), NULL, NULL);
 
+			/* Get hex string from signature */
 			unsigned int result_len = 32;
 		  char res_hexstring[64];
-
 			unsigned int i;
 			for (i = 0; i < result_len; i++) {
 		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
 		  }
 
+			/* Build the headers */
 			char key_header[strlen(auth_key) + 14];
 			strcpy(key_header, "X-Janus-Key: ");
 			strcat(key_header, auth_key);
@@ -546,12 +548,11 @@ static void *janus_sampleevh_handler(void *data) {
 			strcpy(signature_header, "X-Janus-Signature: ");
 			strcat(signature_header, res_hexstring);
 
-
 			JANUS_LOG(LOG_DBG, "Signing POST with:\n");
 			JANUS_LOG(LOG_DBG, "%s\n", key_header);
 			JANUS_LOG(LOG_DBG, "%s\n", signature_header);
 
-
+			/* Append the headers to the existing list */
 			headers = curl_slist_append(headers, key_header);
 			headers = curl_slist_append(headers, signature_header);
 		}
