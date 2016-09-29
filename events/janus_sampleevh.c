@@ -554,11 +554,11 @@ static void *janus_sampleevh_handler(void *data) {
 			// result = HMAC(EVP_sha256(), "f27d509f65f422957916", strlen("f27d509f65f422957916"), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
 			result = HMAC(EVP_sha256(), auth_secret_copy, strlen(auth_secret_copy), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
-			//
-			// for (i = 0; i < result_len; i++) {
-		  //   sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
-		  // }
-			//
+
+			for (i = 0; i < result_len; i++) {
+		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
+		  }
+
 			// // JANUS_LOG(LOG_INFO, "Digest length: %u\n", digest_len);
 			//
 			// JANUS_LOG(LOG_INFO, "Got %s\n", res_hexstring);
@@ -582,14 +582,6 @@ static void *janus_sampleevh_handler(void *data) {
 			// headers = curl_slist_append(headers, "X-Janus-Key: testkey");
 			// headers = curl_slist_append(headers, signature_header);
 		}
-
-
-
-		/* Any credentials? */
-		// if(auth_key != NULL && auth_secret != NULL) {
-		// 	curl_easy_setopt(curl, CURLOPT_USERNAME, auth_key);
-		// 	curl_easy_setopt(curl, CURLOPT_PASSWORD, auth_secret);
-		// }
 
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, event_text);
