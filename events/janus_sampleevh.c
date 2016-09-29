@@ -563,7 +563,7 @@ static void *janus_sampleevh_handler(void *data) {
 			JANUS_LOG(LOG_INFO, "@1 Key: %s\n", auth_key);
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 
-			int i;
+			unsigned int i;
 
 			JANUS_LOG(LOG_INFO, "@2 Key: %s\n", auth_key);
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
