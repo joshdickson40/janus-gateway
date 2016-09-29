@@ -535,13 +535,20 @@ static void *janus_sampleevh_handler(void *data) {
 		  int i;
 		  static char res_hexstring[64];
 
+			char auth_secret_copy[strlen(auth_secret)];
+			strcpy(auth_secret_copy, auth_secret);
+
 			JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
-			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_key);
+			JANUS_LOG(LOG_INFO, "Key: %s\n", auth_key);
 			// JANUS_LOG(LOG_INFO, "Secret length: %zu\n", strlen(auth_secret));
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+
+			JANUS_LOG(LOG_INFO, "Secret copy: %s\n", auth_secret_copy);
 			// JANUS_LOG(LOG_INFO, "Secret length: %zu\n", strlen(auth_secret));
 			// JANUS_LOG(LOG_INFO, "Text: %s\n", event_text);
 			// JANUS_LOG(LOG_INFO, "Text length: %zu\n", strlen(event_text));
+
+
 
 
 			// result = HMAC(EVP_sha256(), "f27d509f65f422957916", strlen("f27d509f65f422957916"), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
