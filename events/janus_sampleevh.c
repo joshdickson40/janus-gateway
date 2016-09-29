@@ -531,7 +531,7 @@ static void *janus_sampleevh_handler(void *data) {
 			// unsigned char *digest = NULL;
 			// unsigned int* digest_len = 0;
 
-			unsigned char* result;
+
 
 
 			char auth_secret_copy[strlen(auth_secret)];
@@ -551,7 +551,7 @@ static void *janus_sampleevh_handler(void *data) {
 
 			// result = HMAC(EVP_sha256(), "f27d509f65f422957916", strlen("f27d509f65f422957916"), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
-			result = HMAC(EVP_sha256(), auth_key, strlen(auth_key), (unsigned char*) event_text, strlen(event_text), NULL, NULL);
+			unsigned char* result = HMAC(EVP_sha256(), auth_key, strlen(auth_key), (unsigned char*) event_text, strlen(event_text), NULL, NULL);
 
 			unsigned int result_len = 32;
 		  static char res_hexstring[64];
@@ -592,6 +592,9 @@ static void *janus_sampleevh_handler(void *data) {
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, event_text);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, janus_sampleehv_write_data);
 
+		JANUS_LOG(LOG_INFO, "@595 Key: %s\n", auth_key);
+		JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+
 		/* Don't wait forever (let's say, 10 seconds) */
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
 		/* Send the request */
@@ -600,6 +603,8 @@ static void *janus_sampleevh_handler(void *data) {
 			JANUS_LOG(LOG_ERR, "Couldn't relay event to the backend: %s\n", curl_easy_strerror(res));
 		} else {
 			JANUS_LOG(LOG_DBG, "Event sent!\n");
+			JANUS_LOG(LOG_INFO, "@606 Key: %s\n", auth_key);
+			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 		}
 done:
 		/* Cleanup */
