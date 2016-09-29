@@ -553,32 +553,32 @@ static void *janus_sampleevh_handler(void *data) {
 
 			unsigned char* result = HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), NULL, NULL);
 
-			JANUS_LOG(LOG_INFO, "@0 Key: %s\n", auth_key);
-			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+			// JANUS_LOG(LOG_INFO, "@0 Key: %s\n", auth_key);
+			// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 
 
 			unsigned int result_len = 32;
 		  char res_hexstring[64];
 
-			JANUS_LOG(LOG_INFO, "@1 Key: %s\n", auth_key);
-			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+			// JANUS_LOG(LOG_INFO, "@1 Key: %s\n", auth_key);
+			// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 
 			unsigned int i;
 
-			JANUS_LOG(LOG_INFO, "@2 Key: %s\n", auth_key);
-			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+			// JANUS_LOG(LOG_INFO, "@2 Key: %s\n", auth_key);
+			// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 
 			for (i = 0; i < result_len; i++) {
-				JANUS_LOG(LOG_INFO, "@pre Key: %s\n", auth_key);
-				JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+				// JANUS_LOG(LOG_INFO, "@pre Key: %s\n", auth_key);
+				// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 
 		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
 
-				JANUS_LOG(LOG_INFO, "@post Key: %s\n", auth_key);
-				JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+				// JANUS_LOG(LOG_INFO, "@post Key: %s\n", auth_key);
+				// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 		  }
 
-			JANUS_LOG(LOG_INFO, "@3 Key: %s\n", auth_key);
+			JANUS_LOG(LOG_INFO, "Key: %s\n", auth_key);
 			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 
 			// // JANUS_LOG(LOG_INFO, "Digest length: %u\n", digest_len);
