@@ -528,13 +528,13 @@ static void *janus_sampleevh_handler(void *data) {
 		/* Any credentials? */
 		if(auth_key != NULL && auth_secret != NULL) {
 			/* Sign event_text with our private key */
-			char auth_secret_copy[strlen(auth_secret)];
-			strcpy(auth_secret_copy, auth_secret);
+			// char auth_secret_copy[strlen(auth_secret)];
+			// strcpy(auth_secret_copy, auth_secret);
 
-			JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
-			JANUS_LOG(LOG_INFO, "Key: %s\n", auth_key);
+			// JANUS_LOG(LOG_INFO, "Trying SHA routine...\n");
+			// JANUS_LOG(LOG_INFO, "Key: %s\n", auth_key);
 			// JANUS_LOG(LOG_INFO, "Secret length: %zu\n", strlen(auth_secret));
-			JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
+			// JANUS_LOG(LOG_INFO, "Secret: %s\n", auth_secret);
 			// JANUS_LOG(LOG_INFO, "Secret copy: %s\n", auth_secret_copy);
 			// JANUS_LOG(LOG_INFO, "Secret length: %zu\n", strlen(auth_secret));
 			// JANUS_LOG(LOG_INFO, "Text: %s\n", event_text);
