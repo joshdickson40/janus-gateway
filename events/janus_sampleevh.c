@@ -553,7 +553,7 @@ static void *janus_sampleevh_handler(void *data) {
 
 			// result = HMAC(EVP_sha256(), "f27d509f65f422957916", strlen("f27d509f65f422957916"), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
-			result = HMAC(EVP_sha256(), auth_secret, strlen(auth_secret), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
+			result = HMAC(EVP_sha256(), auth_secret_copy, strlen(auth_secret_copy), (unsigned char*) event_text, strlen(event_text), digest, digest_len);
 
 			for (i = 0; i < result_len; i++) {
 		    sprintf(&(res_hexstring[i * 2]), "%02x", result[i]);
