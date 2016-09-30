@@ -895,6 +895,9 @@ void *janus_audiobridge_watchdog(void *data) {
 				rl = rl->next;
 			}
 		}
+
+		JANUS_LOG(LOG_INFO, "Watchdog cycle...\n");
+
 		janus_mutex_unlock(&rooms_mutex);
 		g_usleep(500000);
 	}
