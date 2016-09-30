@@ -903,11 +903,19 @@ void *janus_audiobridge_watchdog(void *data) {
 		g_hash_table_iter_init(&iter, rooms);
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
 			janus_audiobridge_room *audiobridge = value;
-			JANUS_LOG(LOG_INFO, "See room (%"SCNu64")\n", key);
+			JANUS_LOG(LOG_INFO, "See room %"SCNu64"\n", key);
+
+			/* print the number of participants in this room */
+			guint64 active_participant_count = g_hash_table_size(audiobridge->participants);
+
+			JANUS_LOG(LOG_INFO, "%"G_GUINT64_FORMAT" participants\n", active_participant_count)
+
+
+
 		}
 
 
-		// 
+		//
 		// json_t *room = json_object_get(root, "room");
 		// json_t *permanent = json_object_get(root, "permanent");
 		// gboolean save = permanent ? json_is_true(permanent) : FALSE;
