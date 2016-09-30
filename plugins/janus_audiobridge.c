@@ -908,7 +908,7 @@ void *janus_audiobridge_watchdog(void *data) {
 			/* print the number of participants in this room */
 			guint64 active_participant_count = g_hash_table_size(audiobridge->participants);
 
-			JANUS_LOG(LOG_INFO, "%"G_GUINT64_FORMAT" participants\n", active_participant_count)
+			JANUS_LOG(LOG_INFO, "%" G_GUINT64_FORMAT " participants\n", active_participant_count);
 
 
 
