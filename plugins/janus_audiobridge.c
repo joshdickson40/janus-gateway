@@ -898,6 +898,90 @@ void *janus_audiobridge_watchdog(void *data) {
 
 		JANUS_LOG(LOG_INFO, "Watchdog cycle...\n");
 
+		GHashTableIter iter;
+		gpointer key, value;
+		g_hash_table_iter_init(&iter, rooms);
+		while (g_hash_table_iter_next(&iter, &key, &value)) {
+			janus_audiobridge_room *audiobridge = value;
+			JANUS_LOG(LOG_INFO, "See room (%"SCNu64")\n", key);
+		}
+
+
+		// 
+		// json_t *room = json_object_get(root, "room");
+		// json_t *permanent = json_object_get(root, "permanent");
+		// gboolean save = permanent ? json_is_true(permanent) : FALSE;
+		//
+		// guint64 room_id = json_integer_value(room);
+		// janus_mutex_lock(&rooms_mutex);
+		// janus_audiobridge_room *audiobridge = g_hash_table_lookup(rooms, &room_id);
+		//
+		// if(audiobridge == NULL) {
+		// 	janus_mutex_unlock(&rooms_mutex);
+		// 	JANUS_LOG(LOG_ERR, "No such room (%"SCNu64")\n", room_id);
+		// 	error_code = JANUS_AUDIOBRIDGE_ERROR_NO_SUCH_ROOM;
+		// 	g_snprintf(error_cause, 512, "No such room (%"SCNu64")", room_id);
+		// 	goto plugin_response;
+		// }
+		// janus_mutex_lock(&audiobridge->mutex);
+		//
+		//
+		// /* Remove room */
+		// g_hash_table_remove(rooms, &room_id);
+		//
+		//
+		// GHashTableIter iter;
+		// gpointer value;
+		// g_hash_table_iter_init(&iter, audiobridge->participants);
+		// while (g_hash_table_iter_next(&iter, NULL, &value)) {
+		// 	janus_audiobridge_participant *p = value;
+		// 	if(p && p->session) {
+		// 		p->room = NULL;
+		// 		int ret = gateway->push_event(p->session->handle, &janus_audiobridge_plugin, NULL, response, NULL);
+		// 		JANUS_LOG(LOG_VERB, "  >> %d (%s)\n", ret, janus_get_api_error(ret));
+		// 		/* Get rid of queued packets */
+		// 		janus_mutex_lock(&p->qmutex);
+		// 		p->active = FALSE;
+		// 		while(p->inbuf) {
+		// 			GList *first = g_list_first(p->inbuf);
+		// 			janus_audiobridge_rtp_relay_packet *pkt = (janus_audiobridge_rtp_relay_packet *)first->data;
+		// 			p->inbuf = g_list_remove_link(p->inbuf, first);
+		// 			first = NULL;
+		// 			if(pkt == NULL)
+		// 				continue;
+		// 			if(pkt->data)
+		// 				g_free(pkt->data);
+		// 			pkt->data = NULL;
+		// 			g_free(pkt);
+		// 			pkt = NULL;
+		// 		}
+		// 		janus_mutex_unlock(&p->qmutex);
+		// 	}
+		// }
+		// /* Also notify event handlers */
+		// if(notify_events && gateway->events_is_enabled()) {
+		// 	json_t *info = json_object();
+		// 	json_object_set_new(info, "event", json_string("destroyed"));
+		// 	json_object_set_new(info, "room", json_integer(room_id));
+		// 	gateway->notify_event(session->handle, info);
+		// }
+		// JANUS_LOG(LOG_VERB, "Waiting for the mixer thread to complete...\n");
+		//
+		// audiobridge->destroyed = janus_get_monotonic_time();
+		//
+		// janus_mutex_unlock(&audiobridge->mutex);
+		// janus_mutex_unlock(&rooms_mutex);
+		// g_thread_join(audiobridge->thread);
+		// /* Done */
+		// JANUS_LOG(LOG_VERB, "Audiobridge room destroyed\n");
+		//
+
+
+
+
+
+
+
 		janus_mutex_unlock(&rooms_mutex);
 		g_usleep(500000);
 	}
