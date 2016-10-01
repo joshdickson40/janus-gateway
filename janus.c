@@ -3012,7 +3012,9 @@ void janus_plugin_notify_event(janus_plugin_session *plugin_session, json_t *eve
 void janus_plugin_notify_system_event(json_t *event, char *package) {
 	/* A plugin asked to notify an event to the handlers */
 	if(janus_events_is_enabled()) {
-		JANUS_LOG(LOG_INFO, 'Test system event workflow...\n');
+
+		JANUS_LOG(LOG_INFO, "Test system event workflow...\n");
+
 		// janus_events_notify_handlers(JANUS_EVENT_TYPE_PLUGIN,
 		// 	NULL, NULL, package, event);
 	} else {
