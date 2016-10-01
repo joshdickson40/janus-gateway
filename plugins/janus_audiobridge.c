@@ -939,7 +939,7 @@ void *janus_audiobridge_watchdog(void *data) {
 					janus_mutex_unlock(&audiobridge->mutex);
 					g_thread_join(audiobridge->thread);
 
-					JANUS_LOG(LOG_INFO, "Room %"SCNu64" destroyed\n", key);
+					JANUS_LOG(LOG_INFO, "Room %"G_GUINT64_FORMAT" destroyed\n", room_id);
 				}
 			}
 		}
