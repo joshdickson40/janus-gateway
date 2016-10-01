@@ -377,11 +377,11 @@ struct janus_callbacks {
 	 * @param[in] event The event to notify as a Jansson json_t object */
 	void (* const notify_event)(janus_plugin_session *handle, json_t *event);
 
-
+	/*! \brief Callback to notify an event to the registered and subscribed event handlers
+	 * \note Don't unref the event object, the core will do that for you
+	 * @param[in] event The event to notify as a Jansson json_t object
+	 * @param[in] package the package originating the event */
 	void (* const notify_system_event)(json_t *event, char *package);
-
-	// void janus_plugin_notify_system_event(json_t *event, const char *package);
-
 };
 
 /*! \brief The hook that plugins need to implement to be created from the gateway */

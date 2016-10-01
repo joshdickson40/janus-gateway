@@ -636,6 +636,7 @@ typedef struct janus_audiobridge_room {
 	gchar *room_secret;			/* Secret needed to manipulate (e.g., destroy) this room */
 	gchar *room_pin;			/* Password needed to join this room, if any */
 	gboolean is_private;		/* Whether this room is 'private' (as in hidden) or not */
+	gboolean is_persisted;		/* Whether this room is persistent or can be cleaned up */
 	uint32_t sampling_rate;		/* Sampling rate of the mix (e.g., 16000 for wideband; can be 8, 12, 16, 24 or 48kHz) */
 	gboolean record;			/* Whether this room has to be recorded or not */
 	gchar *record_file;			/* Path of the recording file */
@@ -897,22 +898,16 @@ void *janus_audiobridge_watchdog(void *data) {
 			}
 		}
 
-		JANUS_LOG(LOG_INFO, "Watchdog cycle...\n");
-
 		GHashTableIter iter;
 		gpointer key, value;
 		g_hash_table_iter_init(&iter, rooms);
 		while (g_hash_table_iter_next(&iter, &key, &value)) {
 			janus_audiobridge_room *audiobridge = value;
-			JANUS_LOG(LOG_INFO, "See room %"SCNu64"\n", key);
-
-			/* print the number of participants in this room */
 			guint64 active_participant_count = g_hash_table_size(audiobridge->participants);
 
-			JANUS_LOG(LOG_INFO, "%" G_GUINT64_FORMAT " participant(s)\n", active_participant_count);
-
-
-			if (active_participant_count > 0) {
+			if (audiobridge->is_persisted) {
+				/* do nothing to this, because caller specified it should persist */
+			} else if (active_participant_count > 0) {
 				/* if the number of participants is more than 0, unset empty_obs time */
 				audiobridge->empty_obs = 0;
 			} else if (active_participant_count == 0 && audiobridge->empty_obs == 0) {
@@ -921,11 +916,8 @@ void *janus_audiobridge_watchdog(void *data) {
 			} else if (active_participant_count == 0) {
 				/* there are 0 participants and an empty_obs was set, so check if it's timed out to delete */
 				gint64 now = janus_get_monotonic_time();
-				if(now - audiobridge->empty_obs > 3*G_USEC_PER_SEC) {
-					JANUS_LOG(LOG_INFO, "Three seconds have passed, so we'll remove this room...\n");
-
+				if(now - audiobridge->empty_obs > 2 * G_USEC_PER_SEC) {
 					guint64 room_id = audiobridge->room_id;
-
 					janus_mutex_lock(&audiobridge->mutex);
 
 					/* Remove room */
@@ -937,61 +929,20 @@ void *janus_audiobridge_watchdog(void *data) {
 						json_object_set_new(info, "event", json_string("destroyed"));
 						json_object_set_new(info, "room", json_integer(room_id));
 
-						/* we now need to build a dummy handle to send along with the info */
+						/* send a system event with no handler or session id */
 						gateway->notify_system_event(info, JANUS_AUDIOBRIDGE_PACKAGE);
 					}
-					JANUS_LOG(LOG_VERB, "Waiting for the mixer thread to complete...\n");
 
-
+					/* mark for cleanup */
 					audiobridge->destroyed = janus_get_monotonic_time();
 
 					janus_mutex_unlock(&audiobridge->mutex);
-
 					g_thread_join(audiobridge->thread);
 
-					JANUS_LOG(LOG_INFO, "Room destroyed...\n");
-
-
-
-
-
-
-
-
-				} else {
-					JANUS_LOG(LOG_INFO, "This room is empty and a time has been set, but the buffer is not yet reached...\n");
+					JANUS_LOG(LOG_INFO, "Room %"SCNu64" destroyed\n", key);
 				}
 			}
-
 		}
-
-
-
-		// json_t *room = json_object_get(root, "room");
-		// json_t *permanent = json_object_get(root, "permanent");
-		// gboolean save = permanent ? json_is_true(permanent) : FALSE;
-
-
-		// janus_mutex_lock(&rooms_mutex);
-		// janus_audiobridge_room *audiobridge = g_hash_table_lookup(rooms, &room_id);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 		janus_mutex_unlock(&rooms_mutex);
 		g_usleep(500000);
 	}
@@ -1073,6 +1024,7 @@ int janus_audiobridge_init(janus_callbacks *callback, const char *config_path) {
 				description = g_strdup(cat->name);
 			audiobridge->room_name = description;
 			audiobridge->is_private = priv && priv->value && janus_is_true(priv->value);
+			audiobridge->is_persisted = true; /* by definition rooms in config are persistent */
 			audiobridge->sampling_rate = atol(sampling->value);
 			switch(audiobridge->sampling_rate) {
 				case 8000:
@@ -1385,6 +1337,7 @@ struct janus_plugin_result *janus_audiobridge_handle_message(janus_plugin_sessio
 		json_t *secret = json_object_get(root, "secret");
 		json_t *pin = json_object_get(root, "pin");
 		json_t *is_private = json_object_get(root, "is_private");
+		json_t *is_persisted = json_object_get(root, "persistent");
 		json_t *sampling = json_object_get(root, "sampling");
 		json_t *record = json_object_get(root, "record");
 		json_t *recfile = json_object_get(root, "record_file");
@@ -1438,6 +1391,7 @@ struct janus_plugin_result *janus_audiobridge_handle_message(janus_plugin_sessio
 		}
 		audiobridge->room_name = description;
 		audiobridge->is_private = is_private ? json_is_true(is_private) : FALSE;
+		audiobridge->is_persisted = is_persisted ? json_is_true(is_persisted) : FALSE;
 		if(secret)
 			audiobridge->room_secret = g_strdup(json_string_value(secret));
 		if(pin)
