@@ -4,12 +4,12 @@
  * \brief    Event handler notifications
  * \details  Event handler plugins can receive events from the Janus core
  * and other plugins, in order to handle them somehow. This methods
- * provide helpers to notify events to such handlers. 
- * 
+ * provide helpers to notify events to such handlers.
+ *
  * \ingroup core
  * \ref core
  */
- 
+
 #include <stdarg.h>
 
 #include "events.h"
@@ -60,7 +60,7 @@ void janus_events_notify_handlers(int type, guint64 session_id, ...) {
 	json_t *event = json_object();
 	json_object_set_new(event, "type", json_integer(type));
 	json_object_set_new(event, "timestamp", json_integer(janus_get_monotonic_time()));
-	if(type != JANUS_EVENT_TYPE_CORE)	/* Core events don't have a session ID */
+	if(type != JANUS_EVENT_TYPE_CORE && session_id != NULL)	/* Core events don't have a session ID */
 		json_object_set_new(event, "session_id", json_integer(session_id));
 	json_t *body = NULL;
 	if(type != JANUS_EVENT_TYPE_WEBRTC && type != JANUS_EVENT_TYPE_CORE)
@@ -114,7 +114,8 @@ void janus_events_notify_handlers(int type, guint64 session_id, ...) {
 		case JANUS_EVENT_TYPE_TRANSPORT: {
 			/* For plugin-originated events, there's the handle ID, the plugin name, and a generic, plugin specific, json_t object */
 			guint64 handle_id = va_arg(args, guint64);
-			json_object_set_new(event, "handle_id", json_integer(handle_id));
+      if (handle_id != NULL)
+			   json_object_set_new(event, "handle_id", json_integer(handle_id));
 			char *name = va_arg(args, char *);
 			json_object_set_new(body, "plugin", json_string(name));
 			json_t *data = va_arg(args, json_t *);
