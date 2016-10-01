@@ -348,7 +348,7 @@ void janus_plugin_relay_data(janus_plugin_session *plugin_session, char *buf, in
 void janus_plugin_close_pc(janus_plugin_session *plugin_session);
 void janus_plugin_end_session(janus_plugin_session *plugin_session);
 void janus_plugin_notify_event(janus_plugin_session *plugin_session, json_t *event);
-void janus_plugin_notify_system_event(json_t *event, char *package);
+void janus_plugin_notify_system_event(json_t *event, const char *package);
 static janus_callbacks janus_handler_plugin =
 	{
 		.push_event = janus_plugin_push_event,
@@ -3009,7 +3009,7 @@ void janus_plugin_notify_event(janus_plugin_session *plugin_session, json_t *eve
 	}
 }
 
-void janus_plugin_notify_system_event(json_t *event, char *package) {
+void janus_plugin_notify_system_event(json_t *event, const char *package) {
 	/* A plugin asked to notify an event to the handlers */
 	if(janus_events_is_enabled()) {
 		janus_events_notify_handlers(JANUS_EVENT_TYPE_PLUGIN,
