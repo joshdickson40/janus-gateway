@@ -648,6 +648,7 @@ typedef struct janus_audiobridge_room {
 	GThread *thread;			/* Mixer thread for this room */
 	gint64 destroyed;			/* When this room has been destroyed */
 	janus_mutex mutex;			/* Mutex to lock this room instance */
+	gint64 empty_obs;		/* the time at which this room was observed to be empty */
 	/* RTP forwarders for this room's mix */
 	GHashTable *rtp_forwarders;	/* RTP forwarders list (as a hashmap) */
 	OpusEncoder *rtp_encoder;	/* Opus encoder instance to use for all RTP forwarders */
@@ -908,9 +909,24 @@ void *janus_audiobridge_watchdog(void *data) {
 			/* print the number of participants in this room */
 			guint64 active_participant_count = g_hash_table_size(audiobridge->participants);
 
-			JANUS_LOG(LOG_INFO, "%" G_GUINT64_FORMAT " participants\n", active_participant_count);
+			JANUS_LOG(LOG_INFO, "%" G_GUINT64_FORMAT " participant(s)\n", active_participant_count);
 
 
+			if (active_participant_count > 0) {
+				/* if the number of participants is more than 0, unset empty_obs time */
+				audiobridge->empty_obs = 0;
+			} else if (active_participant_count == 0 && audiobridge->empty_obs == 0) {
+				/* if the number of participants is 0 and empty_obs time is unset, set it */
+				audiobridge->empty_obs = janus_get_monotonic_time();
+			} else if (active_participant_count == 0) {
+				/* there are 0 participants and an empty_obs was set, so check if it's timed out to delete */
+				gint64 now = janus_get_monotonic_time();
+				if(now - audiobridge->empty_obs > 10*G_USEC_PER_SEC) {
+					JANUS_LOG(LOG_INFO, "Ten seconds have passed, so we'll remove this room...\n");
+				} else {
+					JANUS_LOG(LOG_INFO, "This room is empty and a time has been set, but the buffer is not yet reached...\n");
+				}
+			}
 
 		}
 
@@ -1102,6 +1118,7 @@ int janus_audiobridge_init(janus_callbacks *callback, const char *config_path) {
 			audiobridge->destroy = 0;
 			audiobridge->participants = g_hash_table_new_full(g_int64_hash, g_int64_equal, (GDestroyNotify)g_free, NULL);
 			audiobridge->destroyed = 0;
+			audiobridge->empty_obs = 0;
 			janus_mutex_init(&audiobridge->mutex);
 			audiobridge->rtp_forwarders = g_hash_table_new_full(NULL, NULL, NULL, (GDestroyNotify)g_free);
 			audiobridge->rtp_encoder = NULL;
