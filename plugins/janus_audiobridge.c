@@ -1024,7 +1024,7 @@ int janus_audiobridge_init(janus_callbacks *callback, const char *config_path) {
 				description = g_strdup(cat->name);
 			audiobridge->room_name = description;
 			audiobridge->is_private = priv && priv->value && janus_is_true(priv->value);
-			audiobridge->is_persisted = true; /* by definition rooms in config are persistent */
+			audiobridge->is_persisted = TRUE; /* by definition rooms in config are persistent */
 			audiobridge->sampling_rate = atol(sampling->value);
 			switch(audiobridge->sampling_rate) {
 				case 8000:
