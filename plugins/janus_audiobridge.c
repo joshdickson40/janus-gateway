@@ -932,13 +932,15 @@ void *janus_audiobridge_watchdog(void *data) {
 					g_hash_table_remove(rooms, &room_id);
 
 					/* Also notify event handlers */
-					// if(notify_events && gateway->events_is_enabled()) {
-					// 	json_t *info = json_object();
-					// 	json_object_set_new(info, "event", json_string("destroyed"));
-					// 	json_object_set_new(info, "room", json_integer(room_id));
-					// 	gateway->notify_event(session->handle, info);
-					// }
-					// JANUS_LOG(LOG_VERB, "Waiting for the mixer thread to complete...\n");
+					if(notify_events && gateway->events_is_enabled()) {
+						json_t *info = json_object();
+						json_object_set_new(info, "event", json_string("destroyed"));
+						json_object_set_new(info, "room", json_integer(room_id));
+
+						/* we now need to build a dummy handle to send along with the info */
+						gateway->notify_system_event(info, JANUS_AUDIOBRIDGE_PACKAGE);
+					}
+					JANUS_LOG(LOG_VERB, "Waiting for the mixer thread to complete...\n");
 
 
 					audiobridge->destroyed = janus_get_monotonic_time();
