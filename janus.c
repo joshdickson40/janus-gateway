@@ -3013,7 +3013,7 @@ void janus_plugin_notify_system_event(json_t *event, char *package) {
 	/* A plugin asked to notify an event to the handlers */
 	if(janus_events_is_enabled()) {
 		janus_events_notify_handlers(JANUS_EVENT_TYPE_PLUGIN,
-			NULL, NULL, package, event);
+			0, 0, package, event);
 	} else {
 		json_decref(event);
 	}
