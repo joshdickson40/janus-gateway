@@ -22,7 +22,6 @@ To install it, you'll need to satisfy the following dependencies:
 * [libnice](http://nice.freedesktop.org/wiki/)
 * [OpenSSL](http://www.openssl.org/) (at least v1.0.1e)
 * [libsrtp](https://github.com/cisco/libsrtp) (at least v1.5 suggested)
-* [Sofia-SIP](http://sofia-sip.sourceforge.net/)
 * [usrsctp](https://github.com/sctplab/usrsctp) (only needed if you
 are interested in Data Channels)
 * [libmicrohttpd](http://www.gnu.org/software/libmicrohttpd/) (only
@@ -33,9 +32,12 @@ you are interested in WebSockets support for the Janus API)
 WebSockets and/or BoringSSL support, as they make use of it)
 * [rabbitmq-c](https://github.com/alanxz/rabbitmq-c) (only needed if
 you are interested in RabbitMQ support for the Janus API)
+* [paho.mqtt.c](https://eclipse.org/paho/clients/c) (only needed if
+you are interested in MQTT support for the Janus API)
 
 A couple of plugins depend on a few more libraries:
 
+* [Sofia-SIP](http://sofia-sip.sourceforge.net/) (only needed for the SIP plugin)
 * [libopus](http://opus-codec.org/) (only needed for the bridge plugin)
 * [libogg](http://xiph.org/ogg/) (only needed for the voicemail plugin)
 
@@ -75,11 +77,11 @@ uninstall that version and [install 1.5 manually](https://github.com/cisco/libsr
 In fact, 1.4.x is known to cause several issues with WebRTC. Installation
 is quite straightforward:
 
-	wget https://github.com/cisco/libsrtp/archive/v1.5.0.tar.gz
-	tar xfv v1.5.0.tar.gz
-	cd libsrtp-1.5.0
+	wget https://github.com/cisco/libsrtp/archive/v1.5.4.tar.gz
+	tar xfv v1.5.4.tar.gz
+	cd libsrtp-1.5.4
 	./configure --prefix=/usr --enable-openssl
-	make libsrtp.so && sudo make install
+	make shared_library && sudo make install
 
 * *Note:* you may need to pass --libdir=/usr/lib64 to the configure
 script if you're installing on a x86_64 distribution.
@@ -143,6 +145,19 @@ HTTP REST API, you'll have to install it manually:
 the first line with this:
 
 	git clone https://github.com/warmcat/libwebsockets.git
+
+The same applies for Eclipse Paho MQTT C client library, which is needed
+for the optional MQTT support. If you're interested in integrating MQTT
+queues as an alternative (or replacement) to HTTP and/or WebSockets
+to control Janus, you can install the latest version with the
+following steps:
+
+	git clone https://github.com/eclipse/paho.mqtt.c.git
+	cd paho.mqtt.c
+	make && sudo make install
+
+* *Note:* you may want to set up a different install path for the library,
+to achieve that, replace the last command by 'sudo prefix=/usr make install'.
 
 Finally, the same can be said for rabbitmq-c as well, which is needed
 for the optional RabbitMQ support. In fact, several different versions
