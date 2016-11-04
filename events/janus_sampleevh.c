@@ -546,7 +546,7 @@ static void *janus_sampleevh_handler(void *data) {
 			}
 
 			/* Since this a simple plugin, it does the same for all events: so just convert to string... */
-			event_text = json_dumps(output, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
+			event_text = json_dumps(output, JSON_COMPACT);
 		}
 		/* Whether we just prepared the event or this is a retransmission, send it via HTTP POST */
 		CURLcode res;
