@@ -467,7 +467,6 @@ record_file =	/path/to/recording.wav (where to save the recording)
 #include <jansson.h>
 #include <opus/opus.h>
 #include <sys/time.h>
-#include <stdio.h>
 
 #include "../debug.h"
 #include "../apierror.h"
@@ -826,9 +825,6 @@ typedef struct wav_header {
 #define JANUS_AUDIOBRIDGE_ERROR_ID_EXISTS		490
 #define JANUS_AUDIOBRIDGE_ERROR_ALREADY_JOINED	491
 
-/* Batched recorder size */
-#define JANUS_AUDIOBRIDGE_SAMPLES_PER_FILE 100
-
 
 /* AudioBridge watchdog/garbage collector (sort of) */
 void *janus_audiobridge_watchdog(void *data);
@@ -1038,7 +1034,7 @@ int janus_audiobridge_init(janus_callbacks *callback, const char *config_path) {
 				case 16000:
 				case 24000:
 				case 48000:
-					JANUS_LOG(LOG_INFO, "Sampling rate for mixing: %"SCNu32"\n", audiobridge->sampling_rate);
+					JANUS_LOG(LOG_VERB, "Sampling rate for mixing: %"SCNu32"\n", audiobridge->sampling_rate);
 					break;
 				default:
 					JANUS_LOG(LOG_ERR, "Unsupported sampling rate %"SCNu32"...\n", audiobridge->sampling_rate);
@@ -1051,11 +1047,9 @@ int janus_audiobridge_init(janus_callbacks *callback, const char *config_path) {
 			if(pin != NULL && pin->value != NULL) {
 				audiobridge->room_pin = g_strdup(pin->value);
 			}
-			// audiobridge->record = FALSE;
-			// if(record && record->value && janus_is_true(record->value))
-			/* force always true */
-			audiobridge->record = TRUE;
-
+			audiobridge->record = FALSE;
+			if(record && record->value && janus_is_true(record->value))
+				audiobridge->record = TRUE;
 			if(recfile && recfile->value)
 				audiobridge->record_file = g_strdup(recfile->value);
 			if(recId && recId->value)
@@ -1193,12 +1187,6 @@ const char *janus_audiobridge_get_package(void) {
 void janus_audiobridge_create_session(janus_plugin_session *handle, int *error) {
 	if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
 		*error = -1;
-		return;
-	}
-	janus_audiobridge_session *session = (janus_audiobridge_session *)g_malloc0(sizeof(janus_audiobridge_session));
-	if(session == NULL) {
-		JANUS_LOG(LOG_FATAL, "Memory error!\n");
-		*error = -2;
 		return;
 	}
 	janus_audiobridge_session *session = (janus_audiobridge_session *)g_malloc0(sizeof(janus_audiobridge_session));
@@ -1429,8 +1417,7 @@ struct janus_plugin_result *janus_audiobridge_handle_message(janus_plugin_sessio
 				g_snprintf(error_cause, 512, "We currently only support 16kHz (wideband) as a sampling rate for audio rooms, %"SCNu32" TBD...", audiobridge->sampling_rate);
 				goto plugin_response;
 		}
-		JANUS_LOG(LOG_INFO, "Sampling rate for mixing: %"SCNu32"\n", audiobridge->sampling_rate);
-		audiobridge->record = TRUE;
+		audiobridge->record = FALSE;
 		if(record && json_is_true(record))
 			audiobridge->record = TRUE;
 		if(recfile)
@@ -2035,8 +2022,12 @@ void janus_audiobridge_incoming_rtp(janus_plugin_session *handle, int video, cha
 		} else {
 			/* Make sure we're not queueing too many packets: if so, get rid of the older ones */
 			if(g_list_length(participant->inbuf) >= DEFAULT_PREBUFFERING*2) {
-				JANUS_LOG(LOG_DBG, "Too many packets in queue (%d > %d), removing older ones\n",
-					g_list_length(participant->inbuf), DEFAULT_PREBUFFERING*2);
+				gint64 now = janus_get_monotonic_time();
+				if(now - participant->last_drop > 5*G_USEC_PER_SEC) {
+					JANUS_LOG(LOG_VERB, "Too many packets in queue (%d > %d), removing older ones\n",
+						g_list_length(participant->inbuf), DEFAULT_PREBUFFERING*2);
+					participant->last_drop = now;
+				}
 				while(g_list_length(participant->inbuf) > DEFAULT_PREBUFFERING*2) {
 					/* Remove this packet: it's too old */
 					GList *first = g_list_first(participant->inbuf);
@@ -2348,8 +2339,8 @@ static void *janus_audiobridge_handler(void *data) {
 				} else if(audiobridge->sampling_rate == 48000) {
 					opus_encoder_ctl(participant->encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_FULLBAND));
 				} else {
-					JANUS_LOG(LOG_WARN, "Unsupported sampling rate %d, setting 48kHz\n", audiobridge->sampling_rate);
-					audiobridge->sampling_rate = 48000;
+					JANUS_LOG(LOG_WARN, "Unsupported sampling rate %d, setting 16kHz\n", audiobridge->sampling_rate);
+					audiobridge->sampling_rate = 16000;
 					opus_encoder_ctl(participant->encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_WIDEBAND));
 				}
 				/* FIXME This settings should be configurable */
@@ -2714,8 +2705,8 @@ static void *janus_audiobridge_handler(void *data) {
 				} else if(audiobridge->sampling_rate == 48000) {
 					opus_encoder_ctl(new_encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_FULLBAND));
 				} else {
-					JANUS_LOG(LOG_WARN, "Unsupported sampling rate %d, setting 48kHz\n", audiobridge->sampling_rate);
-					audiobridge->sampling_rate = 48000;
+					JANUS_LOG(LOG_WARN, "Unsupported sampling rate %d, setting 16kHz\n", audiobridge->sampling_rate);
+					audiobridge->sampling_rate = 16000;
 					opus_encoder_ctl(new_encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_WIDEBAND));
 				}
 				/* FIXME This settings should be configurable */
@@ -3105,8 +3096,10 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 	memset(sumBuffer, 0, 960*4);
 	memset(outBuffer, 0, 960*2);
 
-	/* The number of times we write the frame before opening a new file to write */
-	int writeCounter = 0;
+	/* Base RTP packet, in case there are forwarders involved */
+	unsigned char *rtpbuffer = g_malloc0(1500);
+	rtp_header *rtph = (rtp_header *)rtpbuffer;
+	rtph->version = 2;
 
 	/* Timer */
 	struct timeval now, before;
@@ -3193,50 +3186,6 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 				/* FIXME Smoothen/Normalize instead of truncating? */
 				outBuffer[i] = buffer[i];
 			}
-
-			/* if we have written the desired number of frames to the file, first we must close the */
-			/* file and then open its replacement */
-			if(writeCounter > JANUS_AUDIOBRIDGE_SAMPLES_PER_FILE) {
-				/* close the currently in use file */
-				// fclose(audiobridge->recording);
-				//
-				// /* open the new file */
-				// audiobridge->recording = fopen("myfilename.wav", "wb");
-				// // TODO - this needs an incrementation in the name of the file...
-				//
-				// /* build the WAV header */
-				// wav_header header = {
-				// 	{'R', 'I', 'F', 'F'},
-				// 	0,
-				// 	{'W', 'A', 'V', 'E'},
-				// 	{'f', 'm', 't', ' '},
-				// 	16,
-				// 	1,
-				// 	1,
-				// 	audiobridge->sampling_rate,
-				// 	audiobridge->sampling_rate * 2,
-				// 	2,
-				// 	16,
-				// 	{'d', 'a', 't', 'a'},
-				// 	0
-				// };
-				//
-				// /* write the WAV header */
-				// if(fwrite(&header, 1, sizeof(header), audiobridge->recording) != sizeof(header)) {
-				// 	JANUS_LOG(LOG_ERR, "Error writing WAV header...\n");
-				// }
-				//
-				JANUS_LOG(LOG_INFO, "Resetting write coutner...\n");
-
-				/* reset the WAV counter */
-				writeCounter = 0;
-			}
-
-			writeCounter++;
-
-			/* log that we are writing something... */
-			// JANUS_LOG(LOG_INFO, "Writing an OPUS frame to file\n");
-
 			fwrite(outBuffer, sizeof(opus_int16), samples, audiobridge->recording);
 			/* Every 3 seconds we update the wav header */
 			gint64 now = janus_get_monotonic_time();
