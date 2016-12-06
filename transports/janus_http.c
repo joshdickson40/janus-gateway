@@ -1774,8 +1774,7 @@ int janus_http_notifier(janus_http_msg *msg, int max_events) {
 /* Helper to quickly send a success response */
 int janus_http_return_success(janus_http_msg *msg, char *payload) {
 	if(!msg || !msg->connection) {
-		if(payload)
-			free(payload);
+		g_free(payload);
 		return MHD_NO;
 	}
 	struct MHD_Response *response = MHD_create_response_from_buffer(
