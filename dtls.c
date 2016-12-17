@@ -28,6 +28,33 @@
 /* SRTP stuff (http://tools.ietf.org/html/rfc3711) */
 static const char *janus_srtp_error[] =
 {
+#ifdef HAVE_SRTP_2
+	"srtp_err_status_ok",
+	"srtp_err_status_fail",
+	"srtp_err_status_bad_param",
+	"srtp_err_status_alloc_fail",
+	"srtp_err_status_dealloc_fail",
+	"srtp_err_status_init_fail",
+	"srtp_err_status_terminus",
+	"srtp_err_status_auth_fail",
+	"srtp_err_status_cipher_fail",
+	"srtp_err_status_replay_fail",
+	"srtp_err_status_replay_old",
+	"srtp_err_status_algo_fail",
+	"srtp_err_status_no_such_op",
+	"srtp_err_status_no_ctx",
+	"srtp_err_status_cant_check",
+	"srtp_err_status_key_expired",
+	"srtp_err_status_socket_err",
+	"srtp_err_status_signal_err",
+	"srtp_err_status_nonce_bad",
+	"srtp_err_status_read_fail",
+	"srtp_err_status_write_fail",
+	"srtp_err_status_parse_err",
+	"srtp_err_status_encode_err",
+	"srtp_err_status_semaphore_err",
+	"srtp_err_status_pfkey_err",
+#else
 	"err_status_ok",
 	"err_status_fail",
 	"err_status_bad_param",
@@ -53,6 +80,7 @@ static const char *janus_srtp_error[] =
 	"err_status_encode_err",
 	"err_status_semaphore_err",
 	"err_status_pfkey_err",
+#endif
 };
 const gchar *janus_get_srtp_error(int error) {
 	if(error < 0 || error > 24)
@@ -422,7 +450,7 @@ gint janus_dtls_srtp_init(const char* server_pem, const char* server_key) {
 	}
 
 	/* Initialize libsrtp */
-	if(srtp_init() != err_status_ok) {
+	if(srtp_init() != srtp_err_status_ok) {
 		JANUS_LOG(LOG_FATAL, "Ops, error setting up libsrtp?\n");
 		return 5;
 	}
@@ -701,8 +729,8 @@ void janus_dtls_srtp_incoming_msg(janus_dtls_srtp *dtls, char *buf, uint16_t len
 					}
 					/* Build master keys and set SRTP policies */
 						/* Remote (inbound) */
-					crypto_policy_set_rtp_default(&(dtls->remote_policy.rtp));
-					crypto_policy_set_rtcp_default(&(dtls->remote_policy.rtcp));
+					srtp_crypto_policy_set_rtp_default(&(dtls->remote_policy.rtp));
+					srtp_crypto_policy_set_rtcp_default(&(dtls->remote_policy.rtcp));
 					dtls->remote_policy.ssrc.type = ssrc_any_inbound;
 					unsigned char remote_policy_key[SRTP_MASTER_LENGTH];
 					dtls->remote_policy.key = (unsigned char *)&remote_policy_key;
@@ -714,8 +742,8 @@ void janus_dtls_srtp_incoming_msg(janus_dtls_srtp *dtls, char *buf, uint16_t len
 #endif
 					dtls->remote_policy.next = NULL;
 						/* Local (outbound) */
-					crypto_policy_set_rtp_default(&(dtls->local_policy.rtp));
-					crypto_policy_set_rtcp_default(&(dtls->local_policy.rtcp));
+					srtp_crypto_policy_set_rtp_default(&(dtls->local_policy.rtp));
+					srtp_crypto_policy_set_rtcp_default(&(dtls->local_policy.rtcp));
 					dtls->local_policy.ssrc.type = ssrc_any_outbound;
 					unsigned char local_policy_key[SRTP_MASTER_LENGTH];
 					dtls->local_policy.key = (unsigned char *)&local_policy_key;
@@ -727,8 +755,8 @@ void janus_dtls_srtp_incoming_msg(janus_dtls_srtp *dtls, char *buf, uint16_t len
 #endif
 					dtls->local_policy.next = NULL;
 					/* Create SRTP sessions */
-					err_status_t res = srtp_create(&(dtls->srtp_in), &(dtls->remote_policy));
-					if(res != err_status_ok) {
+					srtp_err_status_t res = srtp_create(&(dtls->srtp_in), &(dtls->remote_policy));
+					if(res != srtp_err_status_ok) {
 						/* Something went wrong... */
 						JANUS_LOG(LOG_ERR, "[%"SCNu64"] Oops, error creating inbound SRTP session for component %d in stream %d??\n", handle->handle_id, component->component_id, stream->stream_id);
 						JANUS_LOG(LOG_ERR, "[%"SCNu64"]  -- %d (%s)\n", handle->handle_id, res, janus_get_srtp_error(res));
@@ -736,7 +764,7 @@ void janus_dtls_srtp_incoming_msg(janus_dtls_srtp *dtls, char *buf, uint16_t len
 					}
 					JANUS_LOG(LOG_VERB, "[%"SCNu64"] Created inbound SRTP session for component %d in stream %d\n", handle->handle_id, component->component_id, stream->stream_id);
 					res = srtp_create(&(dtls->srtp_out), &(dtls->local_policy));
-					if(res != err_status_ok) {
+					if(res != srtp_err_status_ok) {
 						/* Something went wrong... */
 						JANUS_LOG(LOG_ERR, "[%"SCNu64"] Oops, error creating outbound SRTP session for component %d in stream %d??\n", handle->handle_id, component->component_id, stream->stream_id);
 						JANUS_LOG(LOG_ERR, "[%"SCNu64"]  -- %d (%s)\n", handle->handle_id, res, janus_get_srtp_error(res));
