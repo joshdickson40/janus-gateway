@@ -37,7 +37,7 @@ record_file =	/path/to/recording.wav (where to save the recording)
  * The Audio Bridge API supports several requests, some of which are
  * synchronous and some asynchronous. There are some situations, though,
  * (invalid JSON, invalid request) which will always result in a
- * synchronous error response even for asynchronous requests. 
+ * synchronous error response even for asynchronous requests.
  *
  * \c create , \c destroy , \c exists, \c allowed, \c kick, \c list,
  * \c listparticipants and \c resetdecoder are synchronous requests,
@@ -1441,6 +1441,7 @@ struct janus_plugin_result *janus_audiobridge_handle_message(janus_plugin_sessio
 		json_t *secret = json_object_get(root, "secret");
 		json_t *pin = json_object_get(root, "pin");
 		json_t *is_private = json_object_get(root, "is_private");
+		json_t *is_persisted = json_object_get(root, "persistent");
 		json_t *allowed = json_object_get(root, "allowed");
 		json_t *sampling = json_object_get(root, "sampling");
 		json_t *audiolevel_ext = json_object_get(root, "audiolevel_ext");
