@@ -50,11 +50,15 @@ else
 
 var janus = null;
 var sfutest = null;
+var opaqueId = "videoroomtest-"+Janus.randomString(12);
+
 var started = false;
 
 var myusername = null;
 var myid = null;
 var mystream = null;
+// We use this other ID just to map our subscriptions to us
+var mypvtid = null;
 
 var feeds = [];
 var bitrateTimer = [];
@@ -83,6 +87,7 @@ $(document).ready(function() {
 						janus.attach(
 							{
 								plugin: "janus.plugin.videoroom",
+								opaqueId: opaqueId,
 								success: function(pluginHandle) {
 									$('#details').remove();
 									sfutest = pluginHandle;
@@ -138,6 +143,7 @@ $(document).ready(function() {
 										if(event === "joined") {
 											// Publisher/manager created, negotiate WebRTC and attach to existing feeds, if any
 											myid = msg["id"];
+											mypvtid = msg["private_id"];
 											Janus.log("Successfully joined room " + msg["room"] + " with ID " + myid);
 											publishOwnFeed(true);
 											// Any new feed to attach to?
@@ -155,7 +161,7 @@ $(document).ready(function() {
 										} else if(event === "destroyed") {
 											// The room has been destroyed
 											Janus.warn("The room has been destroyed!");
-											bootbox.alert(error, function() {
+											bootbox.alert("The room has been destroyed", function() {
 												window.location.reload();
 											});
 										} else if(event === "event") {
@@ -333,7 +339,8 @@ function publishOwnFeed(useAudio) {
 	$('#publish').attr('disabled', true).unbind('click');
 	sfutest.createOffer(
 		{
-			media: { audioRecv: false, videoRecv: false, audioSend: useAudio, videoSend: true},	// Publishers are sendonly
+			// Add data:true here if you want to publish datachannels as well
+			media: { audioRecv: false, videoRecv: false, audioSend: useAudio, videoSend: true },	// Publishers are sendonly
 			success: function(jsep) {
 				Janus.debug("Got publisher SDP!");
 				Janus.debug(jsep);
@@ -376,12 +383,13 @@ function newRemoteFeed(id, display) {
 	janus.attach(
 		{
 			plugin: "janus.plugin.videoroom",
+			opaqueId: opaqueId,
 			success: function(pluginHandle) {
 				remoteFeed = pluginHandle;
 				Janus.log("Plugin attached! (" + remoteFeed.getPlugin() + ", id=" + remoteFeed.getId() + ")");
 				Janus.log("  -- This is a subscriber");
 				// We wait for the plugin to send us an offer
-				var listen = { "request": "join", "room": 1234, "ptype": "listener", "feed": id };
+				var listen = { "request": "join", "room": 1234, "ptype": "listener", "feed": id, "private_id": mypvtid };
 				remoteFeed.send({"message": listen});
 			},
 			error: function(error) {
@@ -426,6 +434,8 @@ function newRemoteFeed(id, display) {
 					remoteFeed.createAnswer(
 						{
 							jsep: jsep,
+							// Add data:true here if you want to subscribe to datachannels as well
+							// (obviously only works if the publisher offered them in the first place)
 							media: { audioSend: false, videoSend: false },	// We want recvonly audio/video
 							success: function(jsep) {
 								Janus.debug("Got SDP!");

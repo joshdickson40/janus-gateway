@@ -230,6 +230,18 @@ Janus.isWebrtcSupported = function() {
 		navigator.getUserMedia !== undefined && navigator.getUserMedia !== null;
 };
 
+// Helper method to create random identifiers (e.g., transaction)
+Janus.randomString = function(len) {
+	var charSet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	var randomString = '';
+	for (var i = 0; i < len; i++) {
+		var randomPoz = Math.floor(Math.random() * charSet.length);
+		randomString += charSet.substring(randomPoz,randomPoz+1);
+	}
+	return randomString;
+}
+
+
 function Janus(gatewayCallbacks) {
 	if(Janus.initDone === undefined) {
 		gatewayCallbacks.error("Library not initialized");
@@ -311,17 +323,6 @@ function Janus(gatewayCallbacks) {
 	this.destroy = function(callbacks) { destroySession(callbacks); };
 	this.attach = function(callbacks) { createHandle(callbacks); };
 
-	// Private method to create random identifiers (e.g., transaction)
-	function randomString(len) {
-		var charSet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-		var randomString = '';
-		for (var i = 0; i < len; i++) {
-			var randomPoz = Math.floor(Math.random() * charSet.length);
-			randomString += charSet.substring(randomPoz,randomPoz+1);
-		}
-		return randomString;
-	}
-
 	function eventHandler() {
 		if(sessionId == null)
 			return;
@@ -345,7 +346,6 @@ function Janus(gatewayCallbacks) {
 			success: handleEvent,
 			error: function(XMLHttpRequest, textStatus, errorThrown) {
 				Janus.error(textStatus + ": " + errorThrown);
-				//~ clearTimeout(timeoutTimer);
 				retries++;
 				if(retries > 3) {
 					// Did we just lose the gateway? :-(
@@ -538,7 +538,7 @@ function Janus(gatewayCallbacks) {
 		if(server === null || !websockets || !connected)
 			return;
 		wsKeepaliveTimeoutId = setTimeout(keepAlive, 30000);
-		var request = { "janus": "keepalive", "session_id": sessionId, "transaction": randomString(12) };
+		var request = { "janus": "keepalive", "session_id": sessionId, "transaction": Janus.randomString(12) };
 		if(token !== null && token !== undefined)
 			request["token"] = token;
 		if(apisecret !== null && apisecret !== undefined)
@@ -548,7 +548,7 @@ function Janus(gatewayCallbacks) {
 
 	// Private method to create a session
 	function createSession(callbacks) {
-		var transaction = randomString(12);
+		var transaction = Janus.randomString(12);
 		var request = { "janus": "create", "transaction": transaction };
 		if(token !== null && token !== undefined)
 			request["token"] = token;
@@ -697,7 +697,7 @@ function Janus(gatewayCallbacks) {
 			destroyHandle(phv.id, {asyncRequest: asyncRequest});
 		}
 		// Ok, go on
-		var request = { "janus": "destroy", "transaction": randomString(12) };
+		var request = { "janus": "destroy", "transaction": Janus.randomString(12) };
 		if(token !== null && token !== undefined)
 			request["token"] = token;
 		if(apisecret !== null && apisecret !== undefined)
@@ -793,8 +793,9 @@ function Janus(gatewayCallbacks) {
 			callbacks.error("Invalid plugin");
 			return;
 		}
-		var transaction = randomString(12);
-		var request = { "janus": "attach", "plugin": plugin, "transaction": transaction };
+		var opaqueId = callbacks.opaqueId;
+		var transaction = Janus.randomString(12);
+		var request = { "janus": "attach", "plugin": plugin, "opaque_id": opaqueId, "transaction": transaction };
 		if(token !== null && token !== undefined)
 			request["token"] = token;
 		if(apisecret !== null && apisecret !== undefined)
@@ -973,7 +974,7 @@ function Janus(gatewayCallbacks) {
 		}
 		var message = callbacks.message;
 		var jsep = callbacks.jsep;
-		var transaction = randomString(12);
+		var transaction = Janus.randomString(12);
 		var request = { "janus": "message", "body": message, "transaction": transaction };
 		if(token !== null && token !== undefined)
 			request["token"] = token;
@@ -1069,7 +1070,7 @@ function Janus(gatewayCallbacks) {
 			Janus.warn("Is the gateway down? (connected=false)");
 			return;
 		}
-		var request = { "janus": "trickle", "candidate": candidate, "transaction": randomString(12) };
+		var request = { "janus": "trickle", "candidate": candidate, "transaction": Janus.randomString(12) };
 		if(token !== null && token !== undefined)
 			request["token"] = token;
 		if(apisecret !== null && apisecret !== undefined)
@@ -1195,7 +1196,7 @@ function Janus(gatewayCallbacks) {
 			callbacks.error("Is the gateway down? (connected=false)");
 			return;
 		}
-		var request = { "janus": "detach", "transaction": randomString(12) };
+		var request = { "janus": "detach", "transaction": Janus.randomString(12) };
 		if(token !== null && token !== undefined)
 			request["token"] = token;
 		if(apisecret !== null && apisecret !== undefined)
@@ -2078,7 +2079,7 @@ function Janus(gatewayCallbacks) {
 		if(config !== null && config !== undefined) {
 			if(hangupRequest === true) {
 				// Send a hangup request (we don't really care about the response)
-				var request = { "janus": "hangup", "transaction": randomString(12) };
+				var request = { "janus": "hangup", "transaction": Janus.randomString(12) };
 				if(token !== null && token !== undefined)
 					request["token"] = token;
 				if(apisecret !== null && apisecret !== undefined)
