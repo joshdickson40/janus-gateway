@@ -543,6 +543,7 @@ record_file =	/path/to/recording.wav (where to save the recording)
 #include "../rtp.h"
 #include "../rtcp.h"
 #include "../record.h"
+#include "../sdp-utils.h"
 #include "../utils.h"
 
 
@@ -763,12 +764,6 @@ static GHashTable *sessions;
 static GList *old_sessions;
 static janus_mutex sessions_mutex;
 
-typedef struct janus_audiobridge_rtp_context {
-	/* Needed to fix seq and ts in case of publisher switching */
-	uint32_t a_last_ssrc, a_last_ts, a_base_ts, a_base_ts_prev;
-	uint16_t a_last_seq, a_base_seq, a_base_seq_prev;
-} janus_audiobridge_rtp_context;
-
 typedef struct janus_audiobridge_participant {
 	janus_audiobridge_session *session;
 	janus_audiobridge_room *room;	/* Room */
@@ -788,7 +783,7 @@ typedef struct janus_audiobridge_participant {
 	int opus_pt;			/* Opus payload type */
 	int extmap_id;			/* Audio level RTP extension id, if any */
 	int dBov_level;			/* Value in dBov of the audio level (last value from extension) */
-	janus_audiobridge_rtp_context context;	/* Needed in case the participant changes room */
+	janus_rtp_switching_context context;	/* Needed in case the participant changes room */
 	/* Opus stuff */
 	OpusEncoder *encoder;		/* Opus encoder instance */
 	OpusDecoder *decoder;		/* Opus decoder instance */
@@ -864,18 +859,6 @@ static gint janus_audiobridge_rtp_sort(gconstpointer a, gconstpointer b) {
 	return 0;
 }
 
-/* SDP offer/answer template */
-#define sdp_template \
-		"v=0\r\n" \
-		"o=- %"SCNu64" %"SCNu64" IN IP4 127.0.0.1\r\n"	/* We need current time here */ \
-		"s=%s\r\n"							/* Audio bridge name */ \
-		"t=0 0\r\n" \
-		"m=audio 1 RTP/SAVPF %d\r\n"		/* Opus payload type */ \
-		"c=IN IP4 1.1.1.1\r\n" \
-		"a=rtpmap:%d opus/48000/2\r\n"		/* Opus payload type */ \
-		"a=fmtp:%d maxplaybackrate=%"SCNu32"; stereo=0; sprop-stereo=0; useinbandfec=0\r\n" /* Opus payload type and room sampling rate */ \
-		"%s"								/* extmap(s), if any */
-
 /* Helper struct to generate and parse WAVE headers */
 typedef struct wav_header {
 	char riff[4];
@@ -920,11 +903,11 @@ typedef struct wav_header {
 #define JANUS_AUDIOBRIDGE_ERROR_ID_EXISTS		490
 #define JANUS_AUDIOBRIDGE_ERROR_ALREADY_JOINED	491
 #define JANUS_AUDIOBRIDGE_ERROR_NO_SUCH_USER	492
+#define JANUS_AUDIOBRIDGE_ERROR_INVALID_SDP		493
 
 
 /* AudioBridge watchdog/garbage collector (sort of) */
-void *janus_audiobridge_watchdog(void *data);
-void *janus_audiobridge_watchdog(void *data) {
+static void *janus_audiobridge_watchdog(void *data) {
 	JANUS_LOG(LOG_INFO, "AudioBridge watchdog started\n");
 	gint64 now = 0;
 	while(g_atomic_int_get(&initialized) && !g_atomic_int_get(&stopping)) {
@@ -2633,13 +2616,7 @@ static void *janus_audiobridge_handler(void *data) {
 			participant->active = session->started;
 			if(!session->started) {
 				/* Initialize the RTP context only if we're renegotiating */
-				participant->context.a_last_ssrc = 0;
-				participant->context.a_last_ts = 0;
-				participant->context.a_base_ts = 0;
-				participant->context.a_base_ts_prev = 0;
-				participant->context.a_last_seq = 0;
-				participant->context.a_base_seq = 0;
-				participant->context.a_base_seq_prev = 0;
+				janus_rtp_switching_context_reset(&participant->context);
 				participant->opus_pt = 0;
 				participant->extmap_id = 0;
 				participant->dBov_level = 0;
@@ -3301,54 +3278,55 @@ static void *janus_audiobridge_handler(void *data) {
 			json_decref(event);
 		} else {
 			JANUS_LOG(LOG_VERB, "This is involving a negotiation (%s) as well:\n%s\n", msg_sdp_type, msg_sdp);
-			const char *type = NULL;
-			if(!strcasecmp(msg_sdp_type, "offer"))
-				type = "answer";
-			if(!strcasecmp(msg_sdp_type, "answer"))
-				type = "offer";
-			/* Fill the SDP template and use that as our answer */
-			janus_audiobridge_participant *participant = (janus_audiobridge_participant *)session->participant;
-			char sdp[1024];
+			/* Prepare an SDP answer */
+			const char *type = "answer";
+			char error_str[512];
+			janus_sdp *offer = janus_sdp_parse(msg_sdp, error_str, sizeof(error_str));
+			if(offer == NULL) {
+				json_decref(event);
+				JANUS_LOG(LOG_ERR, "Error parsing offer: %s\n", error_str);
+				error_code = JANUS_AUDIOBRIDGE_ERROR_INVALID_SDP;
+				g_snprintf(error_cause, 512, "Error parsing offer: %s", error_str);
+				goto error;
+			}
 			/* What is the Opus payload type? */
-			participant->opus_pt = janus_get_codec_pt(msg_sdp, "opus");
+			janus_audiobridge_participant *participant = (janus_audiobridge_participant *)session->participant;
+			participant->opus_pt = janus_sdp_get_codec_pt(offer, "opus");
+			if(participant->opus_pt < 0) {
+				/* TODO Handle this case */
+				JANUS_LOG(LOG_ERR, "Offer doesn't contain Opus..?\n");
+			}
 			JANUS_LOG(LOG_VERB, "Opus payload type is %d\n", participant->opus_pt);
+			janus_sdp *answer = janus_sdp_generate_answer(offer,
+				/* Reject video and data channels, if offered */
+				JANUS_SDP_OA_VIDEO, FALSE,
+				JANUS_SDP_OA_DATA, FALSE,
+				JANUS_SDP_OA_DONE);
+			/* Replace the session name */
+			g_free(answer->s_name);
+			answer->s_name = g_strdup(participant->room->room_name);
+			/* Add a fmtp attribute */
+			janus_sdp_attribute *a = janus_sdp_attribute_create("fmtp",
+				"%d maxplaybackrate=%"SCNu32"; stereo=0; sprop-stereo=0; useinbandfec=0\r\n",
+					participant->opus_pt, participant->room->sampling_rate);
+			janus_sdp_attribute_add_to_mline(janus_sdp_mline_find(answer, JANUS_SDP_AUDIO), a);
 			/* Is the audio level extension negotiated? */
 			participant->extmap_id = 0;
 			participant->dBov_level = 0;
 			int extmap_id = -1;
-			char audio_level_extmap[100];
 			if(participant->room && participant->room->audiolevel_ext)
 				extmap_id = janus_rtp_header_extension_get_id(msg_sdp, JANUS_RTP_EXTMAP_AUDIO_LEVEL);
 			if(extmap_id > -1) {
+				/* Add an extmap attribute too */
 				participant->extmap_id = extmap_id;
-				g_snprintf(audio_level_extmap, sizeof(audio_level_extmap),
-					"a=extmap:%d %s\r\n", extmap_id, JANUS_RTP_EXTMAP_AUDIO_LEVEL);
+				janus_sdp_attribute *a = janus_sdp_attribute_create("extmap",
+					"%d %s\r\n", extmap_id, JANUS_RTP_EXTMAP_AUDIO_LEVEL);
+				janus_sdp_attribute_add_to_mline(janus_sdp_mline_find(answer, JANUS_SDP_AUDIO), a);
 			}
 			/* Prepare the response */
-			g_snprintf(sdp, 1024, sdp_template,
-				janus_get_real_time(),			/* We need current time here */
-				janus_get_real_time(),			/* We need current time here */
-				participant->room->room_name,	/* Audio bridge name */
-				participant->opus_pt,			/* Opus payload type */
-				participant->opus_pt,			/* Opus payload type */
-				participant->opus_pt, 			/* Opus payload type and room sampling rate */
-				participant->room->sampling_rate,
-				extmap_id > -1 ? audio_level_extmap : "");
-			/* Is the peer recvonly? */
-			if(strstr(msg_sdp, "a=recvonly") != NULL) {
-				/* If so, use sendonly here */
-				g_strlcat(sdp, "a=sendonly\r\n", 1024);
-			}
-			/* Did the peer negotiate video? */
-			if(strstr(msg_sdp, "m=video") != NULL) {
-				/* If so, reject it */
-				g_strlcat(sdp, "m=video 0 RTP/SAVPF 0\r\n", 1024);
-			}
-			/* Did the peer negotiate data channels? */
-			if(strstr(msg_sdp, "DTLS/SCTP") != NULL) {
-				/* If so, reject them */
-				g_strlcat(sdp, "m=application 0 DTLS/SCTP 0\r\n", 1024);
-			}
+			char *sdp = janus_sdp_write(answer);
+			janus_sdp_free(offer);
+			janus_sdp_free(answer);
 			json_t *jsep = json_pack("{ssss}", "type", type, "sdp", sdp);
 			/* How long will the gateway take to push the event? */
 			g_atomic_int_set(&session->hangingup, 0);
@@ -3357,6 +3335,7 @@ static void *janus_audiobridge_handler(void *data) {
 			JANUS_LOG(LOG_VERB, "  >> Pushing event: %d (took %"SCNu64" us)\n", res, janus_get_monotonic_time()-start);
 			json_decref(event);
 			json_decref(jsep);
+			g_free(sdp);
 			if(res != JANUS_OK) {
 				/* TODO Failed to negotiate? We should remove this participant */
 			} else {
@@ -3857,20 +3836,7 @@ static void janus_audiobridge_relay_rtp_packet(gpointer data, gpointer user_data
 	/* Set the payload type */
 	packet->data->type = participant->opus_pt;
 	/* Fix sequence number and timestamp (room switching may be involved) */
-	if(ntohl(packet->data->ssrc) != participant->context.a_last_ssrc) {
-		participant->context.a_last_ssrc = ntohl(packet->data->ssrc);
-		participant->context.a_base_ts_prev = participant->context.a_last_ts;
-		participant->context.a_base_ts = packet->timestamp;
-		participant->context.a_base_seq_prev = participant->context.a_last_seq;
-		participant->context.a_base_seq = packet->seq_number;
-	}
-	/* Compute a coherent timestamp and sequence number */
-	participant->context.a_last_ts = (packet->timestamp-participant->context.a_base_ts)
-		+ participant->context.a_base_ts_prev+960;	/* FIXME When switching, we assume Opus and so a 960 ts step */
-	participant->context.a_last_seq = (packet->seq_number-participant->context.a_base_seq)+participant->context.a_base_seq_prev+1;
-	/* Update the timestamp and sequence number in the RTP packet, and send it */
-	packet->data->timestamp = htonl(participant->context.a_last_ts);
-	packet->data->seq_number = htons(participant->context.a_last_seq);
+	janus_rtp_header_update(packet->data, &participant->context, FALSE, 960);
 	if(gateway != NULL)
 		gateway->relay_rtp(session->handle, 0, (char *)packet->data, packet->length);
 	/* Restore the timestamp and sequence number to what the publisher set them to */

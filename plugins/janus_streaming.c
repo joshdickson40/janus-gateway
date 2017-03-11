@@ -88,7 +88,7 @@ The following options are only valid for the 'rstp' type:
 url = RTSP stream URL (only if type=rtsp)
 rtsp_user = RTSP authorization username (only if type=rtsp)
 rtsp_pwd = RTSP authorization password (only if type=rtsp)
-rtspnetwork = network interface IP address or device name to listen on when receiving RTSP streams
+rtspiface = network interface IP address or device name to listen on when receiving RTSP streams
 \endverbatim
  *
  * \section streamapi Streaming API
@@ -266,7 +266,7 @@ static struct janus_json_parameter rtsp_parameters[] = {
 	{"rtsp_pwd", JSON_STRING, 0},
 	{"audio", JANUS_JSON_BOOL, 0},
 	{"video", JANUS_JSON_BOOL, 0},
-	{"rtspnetwork", JSON_STRING, 0}
+	{"rtspiface", JSON_STRING, 0}
 };
 #endif
 static struct janus_json_parameter rtp_audio_parameters[] = {
@@ -477,20 +477,12 @@ static void janus_streaming_message_free(janus_streaming_message *msg) {
 }
 
 
-typedef struct janus_streaming_context {
-	/* Needed to fix seq and ts in case of stream switching */
-	uint32_t a_last_ssrc, a_last_ts, a_base_ts, a_base_ts_prev,
-			v_last_ssrc, v_last_ts, v_base_ts, v_base_ts_prev;
-	uint16_t a_last_seq, a_base_seq, a_base_seq_prev,
-			v_last_seq, v_base_seq, v_base_seq_prev;
-} janus_streaming_context;
-
 typedef struct janus_streaming_session {
 	janus_plugin_session *handle;
 	janus_streaming_mountpoint *mountpoint;
 	gboolean started;
 	gboolean paused;
-	janus_streaming_context context;
+	janus_rtp_switching_context context;
 	gboolean stopping;
 	volatile gint hangingup;
 	gint64 destroyed;	/* Time at which this session was marked as destroyed */
@@ -525,8 +517,7 @@ typedef struct janus_streaming_rtp_relay_packet {
 
 
 /* Streaming watchdog/garbage collector (sort of) */
-void *janus_streaming_watchdog(void *data);
-void *janus_streaming_watchdog(void *data) {
+static void *janus_streaming_watchdog(void *data) {
 	JANUS_LOG(LOG_INFO, "Streaming watchdog started\n");
 	gint64 now = 0;
 	while(g_atomic_int_get(&initialized) && !g_atomic_int_get(&stopping)) {
@@ -586,30 +577,6 @@ void *janus_streaming_watchdog(void *data) {
 	}
 	JANUS_LOG(LOG_INFO, "Streaming watchdog stopped\n");
 	return NULL;
-}
-
-static int janus_streaming_lookup_network_interface(const struct ifaddrs *ifas, const char *iface, janus_network_address *result) {
-	if(!result) {
-		return -1;
-	} else if(iface) {
-		janus_network_query_config q;
-		if(janus_prepare_network_device_query(iface, janus_ip_network_query_options_ipv4 | janus_ip_network_query_options_name, &q)) {
-			JANUS_LOG(LOG_ERR, "Unable to prepare query of network devices by name and/or IPv4 address for values matching: %s\n", iface);
-			return -1;
-		} else {
-			const struct ifaddrs *found = janus_query_network_devices(ifas, &q);
-			if(!found || janus_get_network_device_address(found, result)) {
-				JANUS_LOG(LOG_ERR, "Unable to retrieve address from matching network device for: %s\n", iface);
-				return -1;
-			} else {
-				JANUS_LOG(LOG_VERB, "Successfully retrieved address from matching network device for: %s\n", iface);
-				return 0;
-			}
-		}
-	} else {
-		janus_network_address_nullify(result);
-		return 0;
-	}
 }
 
 /* Plugin implementation */
@@ -723,7 +690,7 @@ int janus_streaming_init(janus_callbacks *callback, const char *config_path) {
 						cl = cl->next;
 						continue;
 					}
-					if(janus_streaming_lookup_network_interface(ifas, aiface->value, &audio_iface)) {
+					if(janus_network_lookup_interface(ifas, aiface->value, &audio_iface) != 0) {
 						JANUS_LOG(LOG_ERR, "Can't add 'rtp' stream '%s', invalid network interface configuration for audio...\n", cat->name);
 						cl = cl->next;
 						continue;
@@ -755,7 +722,7 @@ int janus_streaming_init(janus_callbacks *callback, const char *config_path) {
 						cl = cl->next;
 						continue;
 					}
-					if(janus_streaming_lookup_network_interface(ifas, diface->value, &data_iface)) {
+					if(janus_network_lookup_interface(ifas, diface->value, &data_iface) != 0) {
 						JANUS_LOG(LOG_ERR, "Can't add 'rtp' stream '%s', invalid network interface configuration for data...\n", cat->name);
 						cl = cl->next;
 						continue;
@@ -767,7 +734,7 @@ int janus_streaming_init(janus_callbacks *callback, const char *config_path) {
 						cl = cl->next;
 						continue;
 					}
-					if(janus_streaming_lookup_network_interface(ifas, viface->value, &video_iface)) {
+					if(janus_network_lookup_interface(ifas, viface->value, &video_iface) != 0) {
 						JANUS_LOG(LOG_ERR, "Can't add 'rtp' stream '%s', invalid network interface configuration for video...\n", cat->name);
 						cl = cl->next;
 						continue;
@@ -969,7 +936,7 @@ int janus_streaming_init(janus_callbacks *callback, const char *config_path) {
 				janus_config_item *password = janus_config_get_item(cat, "rtsp_pwd");
 				janus_config_item *audio = janus_config_get_item(cat, "audio");
 				janus_config_item *video = janus_config_get_item(cat, "video");
-				janus_config_item *iface = janus_config_get_item(cat, "rtspnetwork");
+				janus_config_item *iface = janus_config_get_item(cat, "rtspiface");
 				janus_network_address iface_value;
 				if(file == NULL || file->value == NULL) {
 					JANUS_LOG(LOG_ERR, "Can't add 'rtsp' stream '%s', missing mandatory information...\n", cat->name);
@@ -986,7 +953,7 @@ int janus_streaming_init(janus_callbacks *callback, const char *config_path) {
 						cl = cl->next;
 						continue;
 					}
-					if(janus_streaming_lookup_network_interface(ifas, iface->value, &iface_value)) {
+					if(janus_network_lookup_interface(ifas, iface->value, &iface_value) != 0) {
 						JANUS_LOG(LOG_ERR, "Can't add 'rtsp' stream '%s', invalid network interface configuration for stream...\n", cat->name);
 						cl = cl->next;
 						continue;
@@ -1444,7 +1411,7 @@ struct janus_plugin_result *janus_streaming_handle_message(janus_plugin_session 
 				json_t *aiface = json_object_get(root, "audioiface");
 				if(aiface) {
 					const char *miface = (const char *)json_string_value(aiface);
-					if(janus_streaming_lookup_network_interface(ifas, miface, &audio_iface)) {
+					if(janus_network_lookup_interface(ifas, miface, &audio_iface) != 0) {
 						JANUS_LOG(LOG_ERR, "Can't add 'rtp' stream '%s', invalid network interface configuration for audio...\n", (const char *)json_string_value(name));
 						error_code = JANUS_STREAMING_ERROR_CANT_CREATE;
 						g_snprintf(error_cause, 512, ifas ? "Invalid network interface configuration for audio" : "Unable to query network device information");
@@ -1479,7 +1446,7 @@ struct janus_plugin_result *janus_streaming_handle_message(janus_plugin_session 
 				json_t *viface = json_object_get(root, "videoiface");
 				if(viface) {
 					const char *miface = (const char *)json_string_value(viface);
-					if(janus_streaming_lookup_network_interface(ifas, miface, &video_iface)) {
+					if(janus_network_lookup_interface(ifas, miface, &video_iface) != 0) {
 						JANUS_LOG(LOG_ERR, "Can't add 'rtp' stream '%s', invalid network interface configuration for video...\n", (const char *)json_string_value(name));
 						error_code = JANUS_STREAMING_ERROR_CANT_CREATE;
 						g_snprintf(error_cause, 512, ifas ? "Invalid network interface configuration for video" : "Unable to query network device information");
@@ -1505,7 +1472,7 @@ struct janus_plugin_result *janus_streaming_handle_message(janus_plugin_session 
 				json_t *diface = json_object_get(root, "dataiface");
 				if(diface) {
 					const char *miface = (const char *)json_string_value(diface);
-					if(janus_streaming_lookup_network_interface(ifas, miface, &data_iface)) {
+					if(janus_network_lookup_interface(ifas, miface, &data_iface) != 0) {
 						JANUS_LOG(LOG_ERR, "Can't add 'rtp' stream '%s', invalid network interface configuration for data...\n", (const char *)json_string_value(name));
 						error_code = JANUS_STREAMING_ERROR_CANT_CREATE;
 						g_snprintf(error_cause, 512, ifas ? "Invalid network interface configuration for data" : "Unable to query network device information");
@@ -1711,10 +1678,10 @@ struct janus_plugin_result *janus_streaming_handle_message(janus_plugin_session 
 				g_snprintf(error_cause, 512, "Can't add 'rtsp' stream, no audio or video have to be streamed...");
 				goto plugin_response;
 			} else {
-				json_t *iface = json_object_get(root, "rtspnetwork");
+				json_t *iface = json_object_get(root, "rtspiface");
 				if(iface) {
 					const char *miface = (const char *)json_string_value(iface);
-					if(janus_streaming_lookup_network_interface(ifas, miface, &multicast_iface)) {
+					if(janus_network_lookup_interface(ifas, miface, &multicast_iface) != 0) {
 						JANUS_LOG(LOG_ERR, "Can't add 'rtsp' stream '%s', invalid network interface configuration for stream...\n", (const char *)json_string_value(name));
 						error_code = JANUS_STREAMING_ERROR_CANT_CREATE;
 						g_snprintf(error_cause, 512, ifas ? "Invalid network interface configuration for stream" : "Unable to query network device information");
@@ -2224,20 +2191,7 @@ void janus_streaming_setup_media(janus_plugin_session *handle) {
 		return;
 	g_atomic_int_set(&session->hangingup, 0);
 	/* We only start streaming towards this user when we get this event */
-	session->context.a_last_ssrc = 0;
-	session->context.a_last_ts = 0;
-	session->context.a_base_ts = 0;
-	session->context.a_base_ts_prev = 0;
-	session->context.v_last_ssrc = 0;
-	session->context.v_last_ts = 0;
-	session->context.v_base_ts = 0;
-	session->context.v_base_ts_prev = 0;
-	session->context.a_last_seq = 0;
-	session->context.a_base_seq = 0;
-	session->context.a_base_seq_prev = 0;
-	session->context.v_last_seq = 0;
-	session->context.v_base_seq = 0;
-	session->context.v_base_seq_prev = 0;
+	janus_rtp_switching_context_reset(&session->context);
 	/* If this is related to a live RTP mountpoint, any keyframe we can shoot already? */
 	janus_streaming_mountpoint *mountpoint = session->mountpoint;
 	if(mountpoint->streaming_source == janus_streaming_source_rtp) {
@@ -2700,7 +2654,7 @@ static int janus_streaming_create_fd(int port, in_addr_t mcast, const janus_netw
 			if(!janus_network_address_is_null(iface)) {
 				if(iface->family == AF_INET) {
 					mreq.imr_interface = iface->ipv4;
-					(void) janus_network_address_to_string_buffer(iface, &address_representation); // this is OK: if we get here iface must be non-NULL
+					(void) janus_network_address_to_string_buffer(iface, &address_representation); /* This is OK: if we get here iface must be non-NULL */
 					JANUS_LOG(LOG_INFO, "[%s] %s listener using interface address: %s\n", mountpointname, listenername, janus_network_address_string_from_buffer(&address_representation));
 				} else {
 					JANUS_LOG(LOG_ERR, "[%s] %s listener: invalid multicast address type (only IPv4 is currently supported by this plugin)\n", mountpointname, listenername);
@@ -2735,7 +2689,7 @@ static int janus_streaming_create_fd(int port, in_addr_t mcast, const janus_netw
 		if(!IN_MULTICAST(ntohl(mcast)) && !janus_network_address_is_null(iface)) {
 			if(iface->family == AF_INET) {
 				address.sin_addr = iface->ipv4;
-				(void) janus_network_address_to_string_buffer(iface, &address_representation); // this is OK: if we get here iface must be non-NULL
+				(void) janus_network_address_to_string_buffer(iface, &address_representation); /* This is OK: if we get here iface must be non-NULL */
 				JANUS_LOG(LOG_INFO, "[%s] %s listener restricted to interface address: %s\n", mountpointname, listenername, janus_network_address_string_from_buffer(&address_representation));
 			} else {
 				JANUS_LOG(LOG_ERR, "[%s] %s listener: invalid address/restriction type (only IPv4 is currently supported by this plugin)\n", mountpointname, listenername);
@@ -4020,40 +3974,16 @@ static void janus_streaming_relay_rtp_packet(gpointer data, gpointer user_data) 
 	if(packet->is_rtp) {
 		/* Make sure there hasn't been a publisher switch by checking the SSRC */
 		if(packet->is_video) {
-			if(ntohl(packet->data->ssrc) != session->context.v_last_ssrc) {
-				session->context.v_last_ssrc = ntohl(packet->data->ssrc);
-				session->context.v_base_ts_prev = session->context.v_last_ts;
-				session->context.v_base_ts = packet->timestamp;
-				session->context.v_base_seq_prev = session->context.v_last_seq;
-				session->context.v_base_seq = packet->seq_number;
-			}
-			/* Compute a coherent timestamp and sequence number */
-			session->context.v_last_ts = (packet->timestamp-session->context.v_base_ts)
-				+ session->context.v_base_ts_prev+4500;	/* FIXME When switching, we assume 15fps */
-			session->context.v_last_seq = (packet->seq_number-session->context.v_base_seq)+session->context.v_base_seq_prev+1;
-			/* Update the timestamp and sequence number in the RTP packet, and send it */
-			packet->data->timestamp = htonl(session->context.v_last_ts);
-			packet->data->seq_number = htons(session->context.v_last_seq);
+			/* Fix sequence number and timestamp (switching may be involved) */
+			janus_rtp_header_update(packet->data, &session->context, TRUE, 4500);
 			if(gateway != NULL)
 				gateway->relay_rtp(session->handle, packet->is_video, (char *)packet->data, packet->length);
 			/* Restore the timestamp and sequence number to what the publisher set them to */
 			packet->data->timestamp = htonl(packet->timestamp);
 			packet->data->seq_number = htons(packet->seq_number);
 		} else {
-			if(ntohl(packet->data->ssrc) != session->context.a_last_ssrc) {
-				session->context.a_last_ssrc = ntohl(packet->data->ssrc);
-				session->context.a_base_ts_prev = session->context.a_last_ts;
-				session->context.a_base_ts = packet->timestamp;
-				session->context.a_base_seq_prev = session->context.a_last_seq;
-				session->context.a_base_seq = packet->seq_number;
-			}
-			/* Compute a coherent timestamp and sequence number */
-			session->context.a_last_ts = (packet->timestamp-session->context.a_base_ts)
-				+ session->context.a_base_ts_prev+960;	/* FIXME When switching, we assume Opus and so a 960 ts step */
-			session->context.a_last_seq = (packet->seq_number-session->context.a_base_seq)+session->context.a_base_seq_prev+1;
-			/* Update the timestamp and sequence number in the RTP packet, and send it */
-			packet->data->timestamp = htonl(session->context.a_last_ts);
-			packet->data->seq_number = htons(session->context.a_last_seq);
+			/* Fix sequence number and timestamp (switching may be involved) */
+			janus_rtp_header_update(packet->data, &session->context, FALSE, 960);
 			if(gateway != NULL)
 				gateway->relay_rtp(session->handle, packet->is_video, (char *)packet->data, packet->length);
 			/* Restore the timestamp and sequence number to what the publisher set them to */
