@@ -430,8 +430,10 @@ static int janus_recordplay_generate_offer(janus_recordplay_recording *rec) {
 	/* Prepare an SDP offer we'll send to playout viewers */
 	gboolean offer_audio = (rec->arc_file != NULL),
 		offer_video = (rec->vrc_file != NULL);
+	char s_name[100];
+	g_snprintf(s_name, sizeof(s_name), "Recording %"SCNu64, rec->id);
 	janus_sdp *offer = janus_sdp_generate_offer(
-		rec->name, "1.1.1.1",
+		s_name, "1.1.1.1",
 		JANUS_SDP_OA_AUDIO, offer_audio,
 		JANUS_SDP_OA_AUDIO_CODEC, "opus",
 		JANUS_SDP_OA_AUDIO_PT, OPUS_PT,
@@ -553,8 +555,8 @@ int janus_recordplay_init(janus_callbacks *callback, const char *config_path) {
 		config = NULL;
 	}
 	if(recordings_path == NULL) {
-		recordings_path = g_strdup("/tmp");
-		JANUS_LOG(LOG_WARN, "No recordings path specified, using /tmp...\n");
+		JANUS_LOG(LOG_FATAL, "No recordings path specified, giving up...\n");
+		return -1;
 	}
 	/* Create the folder, if needed */
 	struct stat st = {0};
@@ -930,10 +932,8 @@ void janus_recordplay_send_rtcp_feedback(janus_plugin_session *handle, int video
 
 	if(elapsed >= interval) {
 		/* Send both a FIR and a PLI, just to be sure */
-		memset(rtcpbuf, 0, 20);
 		janus_rtcp_fir((char *)&rtcpbuf, 20, &session->video_fir_seq);
 		gateway->relay_rtcp(handle, video, rtcpbuf, 20);
-		memset(rtcpbuf, 0, 12);
 		janus_rtcp_pli((char *)&rtcpbuf, 12);
 		gateway->relay_rtcp(handle, video, rtcpbuf, 12);
 		session->video_keyframe_request_last = now;
@@ -1165,7 +1165,9 @@ static void *janus_recordplay_handler(void *data) {
 				JANUS_SDP_OA_DATA, FALSE,
 				JANUS_SDP_OA_DONE);
 			g_free(answer->s_name);
-			answer->s_name = g_strdup(session->recording->name);
+			char s_name[100];
+			g_snprintf(s_name, sizeof(s_name), "Recording %"SCNu64, session->recording->id);
+			answer->s_name = g_strdup(s_name);
 			sdp = janus_sdp_write(answer);
 			janus_sdp_free(offer);
 			janus_sdp_free(answer);

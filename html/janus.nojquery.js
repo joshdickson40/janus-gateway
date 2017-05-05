@@ -143,7 +143,7 @@ Janus.init = function(options) {
 				} else {
 					Janus.error("Error attaching stream to element");
 				}
-			} else if(adapter.browserDetails.browser === 'safari' || window.navigator.match(/iPad/i) || window.navigator.match(/iPhone/i)) {
+			} else if(adapter.browserDetails.browser === 'safari' || window.navigator.userAgent.match(/iPad/i) || window.navigator.userAgent.match(/iPhone/i)) {
 				element.src = URL.createObjectURL(stream);
 			}
 			else {
@@ -158,7 +158,7 @@ Janus.init = function(options) {
 				} else if(typeof to.src !== 'undefined') {
 					to.src = from.src;
 				}
-			} else if(adapter.browserDetails.browser === 'safari' || window.navigator.match(/iPad/i) || window.navigator.match(/iPhone/i)) {
+			} else if(adapter.browserDetails.browser === 'safari' || window.navigator.userAgent.match(/iPad/i) || window.navigator.userAgent.match(/iPhone/i)) {
 				to.src = from.src;
 			}
 			else {
@@ -473,6 +473,7 @@ function Janus(gatewayCallbacks) {
 				// Don't warn here because destroyHandle causes this situation.
 				return;
 			}
+			pluginHandle.detached = true;
 			pluginHandle.ondetached();
 			pluginHandle.detach();
 		} else if(json["janus"] === "media") {
@@ -721,13 +722,7 @@ function Janus(gatewayCallbacks) {
 			return;
 		}
 		delete Janus.sessions[sessionId];
-		// Destroy all handles first
-		for(var ph in pluginHandles) {
-			var phv = pluginHandles[ph];
-			Janus.log("Destroying handle " + phv.id + " (" + phv.plugin + ")");
-			destroyHandle(phv.id, {asyncRequest: asyncRequest});
-		}
-		// Ok, go on
+		// No need to destroy all handles first, Janus will do that itself
 		var request = { "janus": "destroy", "transaction": Janus.randomString(12) };
 		if(token !== null && token !== undefined)
 			request["token"] = token;
@@ -848,6 +843,7 @@ function Janus(gatewayCallbacks) {
 						session : that,
 						plugin : plugin,
 						id : handleId,
+						detached : false,
 						webrtcStuff : {
 							started : false,
 							myStream : null,
@@ -932,6 +928,7 @@ function Janus(gatewayCallbacks) {
 						session : that,
 						plugin : plugin,
 						id : handleId,
+						detached : false,
 						webrtcStuff : {
 							started : false,
 							myStream : null,
@@ -1228,6 +1225,12 @@ function Janus(gatewayCallbacks) {
 			asyncRequest = (callbacks.asyncRequest === true);
 		Janus.log("Destroying handle " + handleId + " (sync=" + asyncRequest + ")");
 		cleanupWebrtc(handleId);
+		if (pluginHandles[handleId].detached) {
+			// Plugin was already detached by Janus, calling detach again will return a handle not found error, so just exit here
+			delete pluginHandles[handleId];
+			callbacks.success();
+			return;
+		}
 		if(!connected) {
 			Janus.warn("Is the gateway down? (connected=false)");
 			callbacks.error("Is the gateway down? (connected=false)");

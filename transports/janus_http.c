@@ -342,7 +342,11 @@ static struct MHD_Daemon *janus_http_create_daemon(gboolean admin, char *path,
 					admin ? "Admin" : "Janus", secure ? "HTTPS" : "HTTP");
 				/* Bind to all interfaces */
 				daemon = MHD_start_daemon(
-					MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL | MHD_USE_DUAL_STACK,
+#if MHD_VERSION >= 0x00095208
+					MHD_USE_THREAD_PER_CONNECTION | MHD_USE_AUTO_INTERNAL_THREAD | MHD_USE_AUTO | MHD_USE_DUAL_STACK,
+#else
+					MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL_INTERNALLY | MHD_USE_POLL | MHD_USE_DUAL_STACK,
+#endif
 					port,
 					admin ? janus_http_admin_client_connect : janus_http_client_connect,
 					NULL,
@@ -356,7 +360,11 @@ static struct MHD_Daemon *janus_http_create_daemon(gboolean admin, char *path,
 					ip ? "IP" : "interface", ip ? ip : interface,
 					admin ? "Admin" : "Janus", secure ? "HTTPS" : "HTTP");
 				daemon = MHD_start_daemon(
-					MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL | (ipv6 ? MHD_USE_IPv6 : 0),
+#if MHD_VERSION >= 0x00095208
+					MHD_USE_THREAD_PER_CONNECTION | MHD_USE_AUTO_INTERNAL_THREAD | MHD_USE_AUTO | (ipv6 ? MHD_USE_IPv6 : 0),
+#else
+					MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL_INTERNALLY | MHD_USE_POLL | (ipv6 ? MHD_USE_IPv6 : 0),
+#endif
 					port,
 					admin ? janus_http_admin_client_connect : janus_http_client_connect,
 					NULL,
@@ -403,34 +411,9 @@ static struct MHD_Daemon *janus_http_create_daemon(gboolean admin, char *path,
 		}
 	} else {
 		/* HTTPS web server, read certificate and key */
-		FILE *pem = fopen(server_pem, "rb");
-		if(pem) {
-			fseek(pem, 0L, SEEK_END);
-			size_t size = ftell(pem);
-			fseek(pem, 0L, SEEK_SET);
-			cert_pem_bytes = g_malloc0(size);
-			char *index = cert_pem_bytes;
-			int read = 0, tot = size;
-			while((read = fread(index, sizeof(char), tot, pem)) > 0) {
-				tot -= read;
-				index += read;
-			}
-			fclose(pem);
-		}
-		FILE *key = fopen(server_key, "rb");
-		if(key) {
-			fseek(key, 0L, SEEK_END);
-			size_t size = ftell(key);
-			fseek(key, 0L, SEEK_SET);
-			cert_key_bytes = g_malloc0(size);
-			char *index = cert_key_bytes;
-			int read = 0, tot = size;
-			while((read = fread(index, sizeof(char), tot, key)) > 0) {
-				tot -= read;
-				index += read;
-			}
-			fclose(key);
-		}
+		g_file_get_contents(server_pem, &cert_pem_bytes, NULL, NULL);
+		g_file_get_contents(server_key, &cert_key_bytes, NULL, NULL);
+
 		/* Start webserver */
 		if(threads == 0) {
 			JANUS_LOG(LOG_VERB, "Using a thread per connection for the %s API %s webserver\n",
@@ -440,7 +423,11 @@ static struct MHD_Daemon *janus_http_create_daemon(gboolean admin, char *path,
 				JANUS_LOG(LOG_VERB, "Binding to all interfaces for the %s API %s webserver\n",
 					admin ? "Admin" : "Janus", secure ? "HTTPS" : "HTTP");
 				daemon = MHD_start_daemon(
-					MHD_USE_SSL | MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL | MHD_USE_DUAL_STACK,
+#if MHD_VERSION >= 0x00095208
+					MHD_USE_SSL | MHD_USE_THREAD_PER_CONNECTION | MHD_USE_AUTO_INTERNAL_THREAD | MHD_USE_AUTO | MHD_USE_DUAL_STACK,
+#else
+					MHD_USE_SSL | MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL_INTERNALLY | MHD_USE_POLL | MHD_USE_DUAL_STACK,
+#endif
 					port,
 					admin ? janus_http_admin_client_connect : janus_http_client_connect,
 					NULL,
@@ -456,7 +443,11 @@ static struct MHD_Daemon *janus_http_create_daemon(gboolean admin, char *path,
 					ip ? "IP" : "interface", ip ? ip : interface,
 					admin ? "Admin" : "Janus", secure ? "HTTPS" : "HTTP");
 				daemon = MHD_start_daemon(
-					MHD_USE_SSL | MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL | (ipv6 ? MHD_USE_IPv6 : 0),
+#if MHD_VERSION >= 0x00095208
+					MHD_USE_SSL | MHD_USE_THREAD_PER_CONNECTION | MHD_USE_AUTO_INTERNAL_THREAD | MHD_USE_AUTO | (ipv6 ? MHD_USE_IPv6 : 0),
+#else
+					MHD_USE_SSL | MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL_INTERNALLY | MHD_USE_POLL | (ipv6 ? MHD_USE_IPv6 : 0),
+#endif
 					port,
 					admin ? janus_http_admin_client_connect : janus_http_client_connect,
 					NULL,
@@ -565,6 +556,10 @@ int janus_http_init(janus_transport_callbacks *callback, const char *config_path
 		return -1;
 	}
 
+#if MHD_VERSION >= 0x00095208
+	JANUS_LOG(LOG_VERB, "The installed libmicrohttpd version supports MHD_USE_AUTO\n");
+#endif
+
 	/* This is the callback we'll need to invoke to contact the gateway */
 	gateway = callback;
 
@@ -626,7 +621,7 @@ int janus_http_init(janus_transport_callbacks *callback, const char *config_path
 				return -1;
 			}
 			admin_ws_path = g_strdup(item->value);
-			if(strlen(admin_ws_path) > 1 && ws_path[strlen(admin_ws_path)-1] == '/') {
+			if(strlen(admin_ws_path) > 1 && admin_ws_path[strlen(admin_ws_path)-1] == '/') {
 				/* Remove the trailing slash, it makes things harder when we parse requests later */
 				admin_ws_path[strlen(admin_ws_path)-1] = '\0';
 			}
@@ -824,7 +819,7 @@ int janus_http_init(janus_transport_callbacks *callback, const char *config_path
 	janus_config_destroy(config);
 	config = NULL;
 	if(!ws && !sws && !admin_ws && !admin_sws) {
-		JANUS_LOG(LOG_FATAL, "No HTTP/HTTPS server started, giving up...\n"); 
+		JANUS_LOG(LOG_WARN, "No HTTP/HTTPS server started, giving up...\n");
 		return -1;	/* No point in keeping the plugin loaded */
 	}
 	http_janus_api_enabled = ws || sws;
