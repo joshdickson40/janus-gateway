@@ -3555,7 +3555,7 @@ static void *janus_audiobridge_mixer_thread(void *data) {
 	/* Do we need to record the mix? */
 	if(audiobridge->record) {
 		char filename[255];
-		if(audiobridge->record_file) {
+		if(audiobridge->record_file)
 			g_snprintf(filename, 255, "%s", audiobridge->record_file);
 		else
 			g_snprintf(filename, 255, "/home/ubuntu/janus-tmp/janus-audioroom-%s-0.wav", audiobridge->record_id);
