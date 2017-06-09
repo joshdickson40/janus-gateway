@@ -1173,9 +1173,21 @@ void janus_ice_free(janus_ice_handle *handle) {
 	handle = NULL;
 }
 
-void janus_ice_webrtc_hangup(janus_ice_handle *handle) {
+void janus_ice_webrtc_hangup(janus_ice_handle *handle, const char *reason) {
 	if(handle == NULL)
 		return;
+	janus_flags_set(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_CLEANING);
+	if(janus_flags_is_set(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_ALERT))
+		return;
+	janus_flags_set(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_ALERT);
+	janus_plugin *plugin = (janus_plugin *)handle->app;
+	if(plugin != NULL) {
+		JANUS_LOG(LOG_VERB, "[%"SCNu64"] Telling the plugin about the hangup because of a %s (%s)\n",
+			handle->handle_id, reason, plugin->get_name());
+		if(plugin && plugin->hangup_media)
+			plugin->hangup_media(handle->app_handle);
+		janus_ice_notify_hangup(handle, reason);
+	}
 	if(handle->queued_packets != NULL)
 		g_async_queue_push(handle->queued_packets, &janus_ice_dtls_alert);
 	if(handle->send_thread == NULL) {
@@ -2113,19 +2125,7 @@ void janus_ice_cb_nice_recv(NiceAgent *agent, guint stream_id, guint component_i
 				/* Check if there's an RTCP BYE: in case, let's wrap up */
 				if(janus_rtcp_has_bye(buf, buflen)) {
 					JANUS_LOG(LOG_VERB, "[%"SCNu64"] Got RTCP BYE on stream %"SCNu16" (component %"SCNu16"), closing...\n", handle->handle_id, stream->stream_id, component->component_id);
-					janus_flags_set(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_CLEANING);
-					if(!janus_flags_is_set(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_ALERT)) {
-						janus_flags_set(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_ALERT);
-						if(handle->iceloop)
-							g_main_loop_quit(handle->iceloop);
-						janus_plugin *plugin = (janus_plugin *)handle->app;
-						if(plugin != NULL) {
-							JANUS_LOG(LOG_VERB, "[%"SCNu64"] Telling the plugin about it (%s)\n", handle->handle_id, plugin->get_name());
-							if(plugin && plugin->hangup_media)
-								plugin->hangup_media(handle->app_handle);
-							janus_ice_notify_hangup(handle, "RTCP BYE");
-						}
-					}
+					janus_ice_webrtc_hangup(handle, "RTCP BYE");
 					return;
 				}
 				/* Is this audio or video? */
@@ -2637,14 +2637,14 @@ int janus_ice_setup_local(janus_ice_handle *handle, int offer, int audio, int vi
 	}
 	/* Note: in case this is not an OFFER, we don't know whether BUNDLE is supported on the other side or not yet,
 	 * unless Janus was configured to force BUNDLE in which case we enable it on our side anyway */
-	if((offer && bundle) || janus_force_bundle) {
+	if((offer && bundle) || janus_force_bundle || handle->force_bundle) {
 		janus_flags_set(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_BUNDLE);
 	} else {
 		janus_flags_clear(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_BUNDLE);
 	}
 	/* Note: in case this is not an OFFER, we don't know whether rtcp-mux is supported on the other side or not yet,
 	 * unless Janus was configured to force rtcp-mux in which case we enable it on our side anyway */
-	if((offer && rtcpmux) || janus_force_rtcpmux) {
+	if((offer && rtcpmux) || janus_force_rtcpmux || handle->force_rtcp_mux) {
 		janus_flags_set(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_RTCPMUX);
 	} else {
 		janus_flags_clear(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_RTCPMUX);
@@ -2669,7 +2669,7 @@ int janus_ice_setup_local(janus_ice_handle *handle, int offer, int audio, int vi
 		JANUS_LOG(LOG_ERR, "[%"SCNu64"] Got error %d (%s) trying to launch the ICE thread...\n", handle->handle_id, error->code, error->message ? error->message : "??");
 		janus_flags_clear(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_HAS_AGENT);
 		return -1;
- 	}
+	}
 	/* Note: NICE_COMPATIBILITY_RFC5245 is only available in more recent versions of libnice */
 	handle->controlling = janus_ice_lite_enabled ? FALSE : !offer;
 	JANUS_LOG(LOG_INFO, "[%"SCNu64"] Creating ICE agent (ICE %s mode, %s)\n", handle->handle_id,
@@ -3247,6 +3247,12 @@ void *janus_ice_send_thread(void *data) {
 					pkt = NULL;
 				}
 			}
+			if(handle->iceloop) {
+				g_main_loop_quit(handle->iceloop);
+				handle->iceloop = NULL;
+				g_main_context_wakeup(handle->icectx);
+				handle->icectx = NULL;
+			}
 			continue;
 		}
 		if(!janus_flags_is_set(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_READY)) {
@@ -3333,7 +3339,7 @@ void *janus_ice_send_thread(void *data) {
 			video_rtcp_last_rr = now;
 		}
 		/* Do the same with SR/SDES */
-		if(now-audio_rtcp_last_sr >= 500000) {
+		if(now-audio_rtcp_last_sr >= 5*G_USEC_PER_SEC) {
 			janus_ice_stream *stream = handle->audio_stream;
 			if(stream && stream->rtp_component && stream->rtp_component->out_stats.audio_packets > 0) {
 				/* Create a SR/SDES compound */
@@ -3373,7 +3379,7 @@ void *janus_ice_send_thread(void *data) {
 			}
 			audio_rtcp_last_sr = now;
 		}
-		if(now-video_rtcp_last_sr >= 500000) {
+		if(now-video_rtcp_last_sr >= 5*G_USEC_PER_SEC) {
 			janus_ice_stream *stream = janus_flags_is_set(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_BUNDLE) ? (handle->audio_stream ? handle->audio_stream : handle->video_stream) : (handle->video_stream);
 			if(stream && stream->rtp_component && stream->rtp_component->out_stats.video_packets > 0) {
 				/* Create a SR/SDES compound */
@@ -3552,11 +3558,13 @@ void *janus_ice_send_thread(void *data) {
 					rtcp_rr *rr = (rtcp_rr *)rtcpbuf;
 					rr->header.version = 2;
 					rr->header.type = RTCP_RR;
-					rr->header.rc = 1;
+					rr->header.rc = 0;
 					rr->header.length = htons((rrlen/4)-1);
 					janus_ice_stream *stream = janus_flags_is_set(&handle->webrtc_flags, JANUS_ICE_HANDLE_WEBRTC_BUNDLE) ? (handle->audio_stream ? handle->audio_stream : handle->video_stream) : (handle->video_stream);
-					if(stream && stream->video_rtcp_ctx && stream->video_rtcp_ctx->rtp_recvd)
+					if(stream && stream->video_rtcp_ctx && stream->video_rtcp_ctx->rtp_recvd) {
+						rr->header.rc = 1;
 						janus_rtcp_report_block(stream->video_rtcp_ctx, &rr->rb[0]);
+					}
 					/* Append REMB */
 					memcpy(rtcpbuf+rrlen, pkt->data, pkt->length);
 					/* Free old packet and update */
