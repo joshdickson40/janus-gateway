@@ -126,7 +126,7 @@ $(document).ready(function() {
 								},
 								onmessage: function(msg, jsep) {
 									Janus.debug(" ::: Got a message :::");
-									Janus.debug(msg);
+									Janus.debug(JSON.stringify(msg));
 									var event = msg["audiobridge"];
 									Janus.debug("Event: " + event);
 									if(event != undefined && event != null) {
@@ -226,17 +226,7 @@ $(document).ready(function() {
 														$('#rp'+id + ' > i').hide();
 												}
 											} else if(msg["error"] !== undefined && msg["error"] !== null) {
-												if(msg["error_code"] === 485) {
-													// This is a "no such room" error: give a more meaningful description
-													bootbox.alert(
-														"<p>Apparently room <code>" + myroom + "</code> (the one this demo uses as a test room) " +
-														"does not exist...</p><p>Do you have an updated <code>janus.plugin.audiobridge.cfg</code> " +
-														"configuration file? If not, make sure you copy the details of room <code>" + myroom + "</code> " +
-														"from that sample in your current configuration file, then restart Janus and try again."
-													);
-												} else {
-													bootbox.alert(msg["error"]);
-												}
+												bootbox.alert(msg["error"]);
 												return;
 											}
 											// Any new feed to attach to?
@@ -256,7 +246,7 @@ $(document).ready(function() {
 								},
 								onlocalstream: function(stream) {
 									Janus.debug(" ::: Got a local stream :::");
-									Janus.debug(stream);
+									Janus.debug(JSON.stringify(stream));
 									// We're not going to attach the local audio stream
 									$('#audiojoin').hide();
 									$('#room').removeClass('hide').show();

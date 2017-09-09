@@ -146,7 +146,7 @@ static struct libwebsocket_context *wss = NULL, *swss = NULL,
 #endif
 /* libwebsockets sessions that have been closed */
 static GList *old_wss;
-static janus_mutex old_wss_mutex = JANUS_MUTEX_INITIALIZER;
+static janus_mutex old_wss_mutex;
 /* Callbacks for HTTP-related events (automatically rejected) */
 static int janus_websockets_callback_http(
 #ifdef HAVE_LIBWEBSOCKETS_NEWAPI
@@ -292,7 +292,6 @@ static const char *janus_websockets_reason_string(enum libwebsocket_callback_rea
 		CASE_STR(LWS_CALLBACK_UNLOCK_POLL);
 		CASE_STR(LWS_CALLBACK_OPENSSL_CONTEXT_REQUIRES_PRIVATE_KEY);
 		CASE_STR(LWS_CALLBACK_USER);
-		CASE_STR(LWS_CALLBACK_RECEIVE_PONG);
 		default:
 			break;
 	}
@@ -429,6 +428,7 @@ int janus_websockets_init(janus_transport_callbacks *callback, const char *confi
 		JANUS_LOG(LOG_VERB, "libwebsockets logging: %d\n", ws_log_level);
 		lws_set_log_level(ws_log_level, NULL);
 		old_wss = NULL;
+		janus_mutex_init(&old_wss_mutex);
 
 		/* Any ACL for either the Janus or Admin API? */
 		item = janus_config_get_item_drilldown(config, "general", "ws_acl");
@@ -466,36 +466,6 @@ int janus_websockets_init(janus_transport_callbacks *callback, const char *confi
 			}
 			g_strfreev(list);
 			list = NULL;
-		}
-
-		/* Check if we need to enable the transport level ping/pong mechanism */
-		int pingpong_trigger = 0, pingpong_timeout = 0;
-		item = janus_config_get_item_drilldown(config, "general", "pingpong_trigger");
-		if(item && item->value) {
-#if LWS_LIBRARY_VERSION_MAJOR >= 2 && LWS_LIBRARY_VERSION_MINOR >= 1
-			pingpong_trigger = atoi(item->value);
-			if(pingpong_trigger < 0) {
-				JANUS_LOG(LOG_WARN, "Invalid value for pingpong_trigger (%d), ignoring...\n", pingpong_trigger);
-				pingpong_trigger = 0;
-			}
-#else
-			JANUS_LOG(LOG_WARN, "WebSockets ping/pong only supported in libwebsockets >= 2.1\n");
-#endif
-		}
-		item = janus_config_get_item_drilldown(config, "general", "pingpong_timeout");
-		if(item && item->value) {
-#if LWS_LIBRARY_VERSION_MAJOR >= 2 && LWS_LIBRARY_VERSION_MINOR >= 1
-			pingpong_timeout = atoi(item->value);
-			if(pingpong_timeout < 0) {
-				JANUS_LOG(LOG_WARN, "Invalid value for pingpong_timeout (%d), ignoring...\n", pingpong_timeout);
-				pingpong_timeout = 0;
-			}
-#else
-			JANUS_LOG(LOG_WARN, "WebSockets ping/pong only supported in libwebsockets >= 2.1\n");
-#endif
-		}
-		if((pingpong_trigger && !pingpong_timeout) || (!pingpong_trigger && pingpong_timeout)) {
-			JANUS_LOG(LOG_WARN, "pingpong_trigger and pingpong_timeout not both set, ignoring...\n");
 		}
 
 		/* Setup the Janus API WebSockets server(s) */
@@ -537,12 +507,6 @@ int janus_websockets_init(janus_transport_callbacks *callback, const char *confi
 			info.gid = -1;
 			info.uid = -1;
 			info.options = 0;
-#if LWS_LIBRARY_VERSION_MAJOR >= 2 && LWS_LIBRARY_VERSION_MINOR >= 1
-			if(pingpong_trigger > 0 && pingpong_timeout > 0) {
-				info.ws_ping_pong_interval = pingpong_trigger;
-				info.timeout_secs = pingpong_timeout;
-			}
-#endif
 			/* Create the WebSocket context */
 #ifdef HAVE_LIBWEBSOCKETS_NEWAPI
 			wss = lws_create_context(&info);
@@ -608,12 +572,6 @@ int janus_websockets_init(janus_transport_callbacks *callback, const char *confi
 #else
 				info.options = 0;
 #endif
-#if LWS_LIBRARY_VERSION_MAJOR >= 2 && LWS_LIBRARY_VERSION_MINOR >= 1
-				if(pingpong_trigger > 0 && pingpong_timeout > 0) {
-					info.ws_ping_pong_interval = pingpong_trigger;
-					info.timeout_secs = pingpong_timeout;
-				}
-#endif
 				/* Create the secure WebSocket context */
 #ifdef HAVE_LIBWEBSOCKETS_NEWAPI
 				swss = lws_create_context(&info);
@@ -667,12 +625,6 @@ int janus_websockets_init(janus_transport_callbacks *callback, const char *confi
 			info.gid = -1;
 			info.uid = -1;
 			info.options = 0;
-#if LWS_LIBRARY_VERSION_MAJOR >= 2 && LWS_LIBRARY_VERSION_MINOR >= 1
-			if(pingpong_trigger > 0 && pingpong_timeout > 0) {
-				info.ws_ping_pong_interval = pingpong_trigger;
-				info.timeout_secs = pingpong_timeout;
-			}
-#endif
 			/* Create the WebSocket context */
 #ifdef HAVE_LIBWEBSOCKETS_NEWAPI
 			admin_wss = lws_create_context(&info);
@@ -738,12 +690,6 @@ int janus_websockets_init(janus_transport_callbacks *callback, const char *confi
 #else
 				info.options = 0;
 #endif
-#if LWS_LIBRARY_VERSION_MAJOR >= 2 && LWS_LIBRARY_VERSION_MINOR >= 1
-				if(pingpong_trigger > 0 && pingpong_timeout > 0) {
-					info.ws_ping_pong_interval = pingpong_trigger;
-					info.timeout_secs = pingpong_timeout;
-				}
-#endif
 				/* Create the secure WebSocket context */
 #ifdef HAVE_LIBWEBSOCKETS_NEWAPI
 				admin_swss = lws_create_context(&info);
@@ -767,8 +713,6 @@ int janus_websockets_init(janus_transport_callbacks *callback, const char *confi
 	}
 	wss_janus_api_enabled = wss || swss;
 	wss_admin_api_enabled = admin_wss || admin_swss;
-
-	g_atomic_int_set(&initialized, 1);
 
 	GError *error = NULL;
 	/* Start the WebSocket service threads */
@@ -806,6 +750,7 @@ int janus_websockets_init(janus_transport_callbacks *callback, const char *confi
 	}
 
 	/* Done */
+	g_atomic_int_set(&initialized, 1);
 	JANUS_LOG(LOG_INFO, "%s initialized!\n", JANUS_WEBSOCKETS_NAME);
 	return 0;
 }
@@ -1140,14 +1085,10 @@ static int janus_websockets_common_callback(
 		case LWS_CALLBACK_ESTABLISHED: {
 			/* Is there any filtering we should apply? */
 			char name[256], ip[256];
-#ifdef HAVE_LIBWEBSOCKETS_PEER_SIMPLE
-			lws_get_peer_simple(wsi, name, 256);
-#else
 #ifdef HAVE_LIBWEBSOCKETS_NEWAPI
 			lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), name, 256, ip, 256);
 #else
 			libwebsockets_get_peer_addresses(this, wsi, libwebsocket_get_socket_fd(wsi), name, 256, ip, 256);
-#endif
 #endif
 			JANUS_LOG(LOG_VERB, "[%s-%p] WebSocket connection opened from %s by %s\n", log_prefix, wsi, ip, name);
 			if(!janus_websockets_is_allowed(ip, admin)) {

@@ -9,8 +9,7 @@ if(window.location.protocol === 'http:')
 	server = "http://" + window.location.hostname + ":7088/admin";
 else
 	server = "https://" + window.location.hostname + ":7889/admin";
-// If you don't want the page to prompt you for a password, insert it here
-var secret = "";
+var secret = "janusoverlord";	// This is what you configured in janus.cfg
 
 var session = null;		// Selected session
 var handle = null;		// Selected handle
@@ -28,43 +27,8 @@ $(document).ready(function() {
 		e.preventDefault()
 		$(this).tab('show')
 	});
-	if(!server)
-		server = "";
-	if(!secret)
-		secret = "";
-	if(server !== "" && secret !== "") {
-		updateServerInfo();
-	} else {
-		promptAccessDetails();
-	}
+	updateServerInfo();
 });
-
-var prompting = false;
-var alerted = false;
-function promptAccessDetails() {
-	if(prompting)
-		return;
-	prompting = true;
-	var serverPlaceholder = "Insert the address of the Admin API backend";
-	var secretPlaceholder = "Insert the Admin API secret";
-	bootbox.alert({
-		message: "<div class='input-group margin-bottom-sm'>" +
-			"	<span class='input-group-addon'><i class='fa fa-cloud-upload fa-fw'></i></span>" +
-			"	<input class='form-control' type='text' value='" + server + "' placeholder='" + serverPlaceholder + "' autocomplete='off' id='server'></input>" +
-			"</div>" +
-			"<div class='input-group margin-bottom-sm'>" +
-			"	<span class='input-group-addon'><i class='fa fa-key fa-fw'></i></span>" +
-			"	<input class='form-control' type='password'  value='" + secret + "'placeholder='" + secretPlaceholder + "' autocomplete='off' id='secret'></input>" +
-			"</div>",
-		closeButton: false,
-		callback: function() {
-			prompting = false;
-			server = $('#server').val();
-			secret = $('#secret').val();
-			updateServerInfo();
-		}
-	});
-}
 
 // Helper method to create random identifiers (e.g., transaction)
 function randomString(len) {
@@ -87,13 +51,7 @@ function updateServerInfo() {
 		success: function(json) {
 			if(json["janus"] !== "server_info") {
 				console.log("Ooops: " + json["error"].code + " " + json["error"].reason);	// FIXME
-				if(!prompting && !alerted) {
-					alerted = true;
-					bootbox.alert(json["error"].reason, function() {
-						promptAccessDetails();
-						alerted = false;
-					});
-				}
+				bootbox.alert(json["error"].reason);
 				return;
 			}
 			console.log("Got server info:");
@@ -167,13 +125,7 @@ function updateServerInfo() {
 		},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
 			console.log(textStatus + ": " + errorThrown);	// FIXME
-			if(!prompting && !alerted) {
-				alerted = true;
-				bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?", function() {
-					promptAccessDetails();
-					alerted = false;
-				});
-			}
+			bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?");
 		},
 		dataType: "json"
 	});
@@ -192,17 +144,7 @@ function updateSettings() {
 		success: function(json) {
 			if(json["janus"] !== "success") {
 				console.log("Ooops: " + json["error"].code + " " + json["error"].reason);	// FIXME
-				var authenticate = (json["error"].code === 403);
-				if(!authenticate || (authenticate && !prompting && !alerted)) {
-					if(authenticate)
-						alerted = true;
-					bootbox.alert(json["error"].reason, function() {
-						if(authenticate) {
-							promptAccessDetails();
-							alerted = false;
-						}
-					});
-				}
+				bootbox.alert(json["error"].reason);
 				setTimeout(function() {
 					$('#update-settings').removeClass('fa-spin').click(updateSettings);
 				}, 1000);
@@ -352,14 +294,8 @@ function updateSettings() {
 		},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
 			console.log(textStatus + ": " + errorThrown);	// FIXME
+			bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?");
 			$('#update-settings').removeClass('fa-spin').click(updateSettings);
-			if(!prompting && !alerted) {
-				alerted = true;
-				bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?", function() {
-					promptAccessDetails();
-					alerted = false;
-				});
-			}
 		},
 		dataType: "json"
 	});
@@ -416,30 +352,14 @@ function sendSettingsRequest(request) {
 		success: function(json) {
 			if(json["janus"] !== "success") {
 				console.log("Ooops: " + json["error"].code + " " + json["error"].reason);	// FIXME
-				var authenticate = (json["error"].code === 403);
-				if(!authenticate || (authenticate && !prompting && !alerted)) {
-					if(authenticate)
-						alerted = true;
-					bootbox.alert(json["error"].reason, function() {
-						if(authenticate) {
-							promptAccessDetails();
-							alerted = false;
-						}
-					});
-				}
+				bootbox.alert(json["error"].reason);
 				return;
 			}
 			updateSettings();
 		},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
 			console.log(textStatus + ": " + errorThrown);	// FIXME
-			if(!prompting && !alerted) {
-				alerted = true;
-				bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?", function() {
-					promptAccessDetails();
-					alerted = false;
-				});
-			}
+			bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?");
 		},
 		dataType: "json"
 	});
@@ -460,17 +380,7 @@ function updateSessions() {
 		success: function(json) {
 			if(json["janus"] !== "success") {
 				console.log("Ooops: " + json["error"].code + " " + json["error"].reason);	// FIXME
-				var authenticate = (json["error"].code === 403);
-				if(!authenticate || (authenticate && !prompting && !alerted)) {
-					if(authenticate)
-						alerted = true;
-					bootbox.alert(json["error"].reason, function() {
-						if(authenticate) {
-							promptAccessDetails();
-							alerted = false;
-						}
-					});
-				}
+				bootbox.alert(json["error"].reason);
 				setTimeout(function() {
 					$('#update-sessions').removeClass('fa-spin').click(updateSessions);
 					$('#update-handles').click(updateHandles);
@@ -535,6 +445,7 @@ function updateSessions() {
 		},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
 			console.log(textStatus + ": " + errorThrown);	// FIXME
+			bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?");
 			setTimeout(function() {
 				$('#update-sessions').removeClass('fa-spin').click(updateSessions);
 				$('#update-handles').click(updateHandles);
@@ -548,13 +459,6 @@ function updateSessions() {
 			$('#handle-info').empty();
 			$('#options').hide();
 			$('#info').hide();
-			if(!prompting && !alerted) {
-				alerted = true;
-				bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?", function() {
-					promptAccessDetails();
-					alerted = false;
-				});
-			}
 		},
 		dataType: "json"
 	});
@@ -576,17 +480,7 @@ function updateHandles() {
 		success: function(json) {
 			if(json["janus"] !== "success") {
 				console.log("Ooops: " + json["error"].code + " " + json["error"].reason);	// FIXME
-				var authenticate = (json["error"].code === 403);
-				if(!authenticate || (authenticate && !prompting && !alerted)) {
-					if(authenticate)
-						alerted = true;
-					bootbox.alert(json["error"].reason, function() {
-						if(authenticate) {
-							promptAccessDetails();
-							alerted = false;
-						}
-					});
-				}
+				bootbox.alert(json["error"].reason);
 				setTimeout(function() {
 					$('#update-handles').removeClass('fa-spin').click(updateHandles);
 					$('#update-sessions').click(updateSessions);
@@ -638,16 +532,10 @@ function updateHandles() {
 		},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
 			console.log(textStatus + ": " + errorThrown);	// FIXME
+			bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled/inaccessible?");
 			$('#update-handles').removeClass('fa-spin').click(updateHandles);
 			$('#update-sessions').click(updateSessions);
 			$('#update-handle').click(updateHandleInfo);
-			if(!prompting && !alerted) {
-				alerted = true;
-				bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?", function() {
-					promptAccessDetails();
-					alerted = false;
-				});
-			}
 		},
 		dataType: "json"
 	});
@@ -675,19 +563,8 @@ function updateHandleInfo(refresh) {
 		success: function(json) {
 			if(json["janus"] !== "success") {
 				console.log("Ooops: " + json["error"].code + " " + json["error"].reason);	// FIXME
-				if(refresh !== true) {
-					var authenticate = (json["error"].code === 403);
-					if(!authenticate || (authenticate && !prompting && !alerted)) {
-						if(authenticate)
-							alerted = true;
-						bootbox.alert(json["error"].reason, function() {
-							if(authenticate) {
-								promptAccessDetails();
-								alerted = false;
-							}
-						});
-					}
-				}
+				if(refresh !== true)
+					bootbox.alert(json["error"].reason);
 				setTimeout(function() {
 					$('#update-sessions').click(updateSessions);
 					$('#update-handles').click(updateHandles);
@@ -727,16 +604,10 @@ function updateHandleInfo(refresh) {
 		},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
 			console.log(textStatus + ": " + errorThrown);	// FIXME
+			bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?");
 			$('#update-handles').removeClass('fa-spin').click(updateHandles);
 			$('#update-sessions').click(updateSessions);
 			$('#update-handle').click(updateHandleInfo);
-			if(!prompting && !alerted) {
-				alerted = true;
-				bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?", function() {
-					promptAccessDetails();
-					alerted = false;
-				});
-			}
 		},
 		dataType: "json"
 	});
@@ -928,17 +799,7 @@ function updateTokens() {
 		success: function(json) {
 			if(json["janus"] !== "success") {
 				console.log("Ooops: " + json["error"].code + " " + json["error"].reason);	// FIXME
-				var authenticate = (json["error"].code === 403);
-				if(!authenticate || (authenticate && !prompting && !alerted)) {
-					if(authenticate)
-						alerted = true;
-					bootbox.alert(json["error"].reason, function() {
-						if(authenticate) {
-							promptAccessDetails();
-							alerted = false;
-						}
-					});
-				}
+				bootbox.alert(json["error"].reason);
 				setTimeout(function() {
 					$('#update-tokens').removeClass('fa-spin').click(updateTokens);
 				}, 1000);
@@ -1015,14 +876,8 @@ function updateTokens() {
 		},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
 			console.log(textStatus + ": " + errorThrown);	// FIXME
+			bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?");
 			$('#update-settings').removeClass('fa-spin').click(updateSettings);
-			if(!prompting && !alerted) {
-				alerted = true;
-				bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?", function() {
-					promptAccessDetails();
-					alerted = false;
-				});
-			}
 		},
 		dataType: "json"
 	});
@@ -1049,30 +904,14 @@ function sendTokenRequest(request) {
 		success: function(json) {
 			if(json["janus"] !== "success") {
 				console.log("Ooops: " + json["error"].code + " " + json["error"].reason);	// FIXME
-				var authenticate = (json["error"].code === 403);
-				if(!authenticate || (authenticate && !prompting && !alerted)) {
-					if(authenticate)
-						alerted = true;
-					bootbox.alert(json["error"].reason, function() {
-						if(authenticate) {
-							promptAccessDetails();
-							alerted = false;
-						}
-					});
-				}
+				bootbox.alert(json["error"].reason);
 				return;
 			}
 			updateTokens();
 		},
 		error: function(XMLHttpRequest, textStatus, errorThrown) {
 			console.log(textStatus + ": " + errorThrown);	// FIXME
-			if(!prompting && !alerted) {
-				alerted = true;
-				bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?", function() {
-					promptAccessDetails();
-					alerted = false;
-				});
-			}
+			bootbox.alert("Couldn't contact the backend: is Janus down, or is the Admin/Monitor interface disabled?");
 		},
 		dataType: "json"
 	});

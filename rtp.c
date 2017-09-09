@@ -10,7 +10,6 @@
  * \ref protocols
  */
  
-#include <string.h>
 #include "rtp.h"
 #include "debug.h"
 
@@ -91,8 +90,6 @@ const char *janus_rtp_header_extension_get_from_id(const char *sdp, int id) {
 						return JANUS_RTP_EXTMAP_ABS_SEND_TIME;
 					if(strstr(extension, JANUS_RTP_EXTMAP_CC_EXTENSIONS))
 						return JANUS_RTP_EXTMAP_CC_EXTENSIONS;
-					if(strstr(extension, JANUS_RTP_EXTMAP_RTP_STREAM_ID))
-						return JANUS_RTP_EXTMAP_RTP_STREAM_ID;
 					JANUS_LOG(LOG_ERR, "Unsupported extension '%s'\n", extension);
 					return NULL;
 				}
@@ -105,8 +102,7 @@ const char *janus_rtp_header_extension_get_from_id(const char *sdp, int id) {
 }
 
 /* Static helper to quickly find the extension data */
-static int janus_rtp_header_extension_find(char *buf, int len, int id,
-		uint8_t *byte, uint32_t *word, char **ref) {
+static int janus_rtp_header_extension_find(char *buf, int len, int id, uint8_t *byte, uint32_t *word) {
 	if(!buf || len < 12)
 		return -1;
 	rtp_header *rtp = (rtp_header *)buf;
@@ -114,7 +110,7 @@ static int janus_rtp_header_extension_find(char *buf, int len, int id,
 	if(rtp->csrccount)	/* Skip CSRC if needed */
 		hlen += rtp->csrccount*4;
 	if(rtp->extension) {
-		janus_rtp_header_extension *ext = (janus_rtp_header_extension *)(buf+hlen);
+		janus_rtp_header_extension *ext = (janus_rtp_header_extension*)(buf+hlen);
 		int extlen = ntohs(ext->length)*4;
 		hlen += 4;
 		if(len > (hlen + extlen)) {
@@ -138,8 +134,6 @@ static int janus_rtp_header_extension_find(char *buf, int len, int id,
 							*byte = buf[hlen+i+1];
 						if(word)
 							*word = *(uint32_t *)(buf+hlen+i);
-						if(ref)
-							*ref = &buf[hlen];
 						return 0;
 					}
 					i += 1 + idlen;
@@ -153,7 +147,7 @@ static int janus_rtp_header_extension_find(char *buf, int len, int id,
 
 int janus_rtp_header_extension_parse_audio_level(char *buf, int len, int id, int *level) {
 	uint8_t byte = 0;
-	if(janus_rtp_header_extension_find(buf, len, id, &byte, NULL, NULL) < 0)
+	if(janus_rtp_header_extension_find(buf, len, id, &byte, NULL) < 0)
 		return -1;
 	/* a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level */
 	int v = (byte & 0x80) >> 7;
@@ -167,7 +161,7 @@ int janus_rtp_header_extension_parse_audio_level(char *buf, int len, int id, int
 int janus_rtp_header_extension_parse_video_orientation(char *buf, int len, int id,
 		gboolean *c, gboolean *f, gboolean *r1, gboolean *r0) {
 	uint8_t byte = 0;
-	if(janus_rtp_header_extension_find(buf, len, id, &byte, NULL, NULL) < 0)
+	if(janus_rtp_header_extension_find(buf, len, id, &byte, NULL) < 0)
 		return -1;
 	/* a=extmap:4 urn:3gpp:video-orientation */
 	gboolean cbit = (byte & 0x08) >> 3;
@@ -189,7 +183,7 @@ int janus_rtp_header_extension_parse_video_orientation(char *buf, int len, int i
 int janus_rtp_header_extension_parse_playout_delay(char *buf, int len, int id,
 		uint16_t *min_delay, uint16_t *max_delay) {
 	uint32_t bytes = 0;
-	if(janus_rtp_header_extension_find(buf, len, id, NULL, &bytes, NULL) < 0)
+	if(janus_rtp_header_extension_find(buf, len, id, NULL, &bytes) < 0)
 		return -1;
 	/* a=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay */
 	uint16_t min = (bytes & 0x00FFF000) >> 12;
@@ -202,31 +196,28 @@ int janus_rtp_header_extension_parse_playout_delay(char *buf, int len, int id,
 	return 0;
 }
 
-int janus_rtp_header_extension_parse_rtp_stream_id(char *buf, int len, int id,
-		char *sdes_item, int sdes_len) {
-	char *ext = NULL;
-	if(janus_rtp_header_extension_find(buf, len, id, NULL, NULL, &ext) < 0)
-		return -1;
-	/* a=extmap:3/sendonly urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id */
-	if(ext == NULL)
-		return -2;
-	int val_len = (*ext & 0x0F) + 1;
-	if(val_len > (sdes_len-1)) {
-		JANUS_LOG(LOG_WARN, "SDES buffer is too small (%d < %d), RTP stream ID will be cut\n", val_len, sdes_len);
-		val_len = sdes_len-1;
-	}
-	memcpy(sdes_item, ext+1, val_len);
-	*(sdes_item+val_len) = '\0';
-	return 0;
-}
-
 
 /* RTP context related methods */
 void janus_rtp_switching_context_reset(janus_rtp_switching_context *context) {
 	if(context == NULL)
 		return;
 	/* Reset the context values */
-	memset(context, 0, sizeof(*context));
+	context->a_last_ssrc = 0;
+	context->a_last_ts = 0;
+	context->a_base_ts = 0;
+	context->a_base_ts_prev = 0;
+	context->v_last_ssrc = 0;
+	context->v_last_ts = 0;
+	context->v_base_ts = 0;
+	context->v_base_ts_prev = 0;
+	context->a_last_seq = 0;
+	context->a_base_seq = 0;
+	context->a_base_seq_prev = 0;
+	context->v_last_seq = 0;
+	context->v_base_seq = 0;
+	context->v_base_seq_prev = 0;
+	context->a_seq_reset = FALSE;
+	context->v_seq_reset = FALSE;
 }
 
 void janus_rtp_header_update(rtp_header *header, janus_rtp_switching_context *context, gboolean video, int step) {

@@ -69,7 +69,6 @@
 #include "pp-h264.h"
 #include "pp-opus.h"
 #include "pp-g711.h"
-#include "pp-g722.h"
 #include "pp-srt.h"
 
 #define htonll(x) ((1==htonl(1)) ? (x) : ((gint64)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
@@ -156,7 +155,7 @@ int main(int argc, char *argv[])
 	JANUS_LOG(LOG_INFO, "Pre-parsing file to generate ordered index...\n");
 	gboolean parsed_header = FALSE;
 	int video = 0, data = 0;
-	int opus = 0, g711 = 0, g722 = 0, vp8 = 0, vp9 = 0, h264 = 0;
+	int opus = 0, g711 = 0, vp8 = 0, vp9 = 0, h264 = 0;
 	gint64 c_time = 0, w_time = 0;
 	int bytes = 0, skip = 0;
 	long offset = 0;
@@ -308,12 +307,6 @@ int main(int argc, char *argv[])
 						g711 = 1;
 						if(extension && strcasecmp(extension, ".wav")) {
 							JANUS_LOG(LOG_ERR, "G.711 RTP packets can only be converted to a .wav file\n");
-							exit(1);
-						}
-					} else if(!strcasecmp(c, "g722")) {
-						g722 = 1;
-						if(extension && strcasecmp(extension, ".wav")) {
-							JANUS_LOG(LOG_ERR, "G.722 RTP packets can only be converted to a .wav file\n");
 							exit(1);
 						}
 					} else {
@@ -630,11 +623,6 @@ int main(int argc, char *argv[])
 				JANUS_LOG(LOG_ERR, "Error creating .wav file...\n");
 				exit(1);
 			}
-		} else if(g722) {
-			if(janus_pp_g722_create(destination) < 0) {
-				JANUS_LOG(LOG_ERR, "Error creating .wav file...\n");
-				exit(1);
-			}
 		}
 	} else if(data) {
 		if(janus_pp_srt_create(destination) < 0) {
@@ -664,10 +652,6 @@ int main(int argc, char *argv[])
 		} else if(g711) {
 			if(janus_pp_g711_process(file, list, &working) < 0) {
 				JANUS_LOG(LOG_ERR, "Error processing G.711 RTP frames...\n");
-			}
-		} else if(g722) {
-			if(janus_pp_g722_process(file, list, &working) < 0) {
-				JANUS_LOG(LOG_ERR, "Error processing G.722 RTP frames...\n");
 			}
 		}
 	} else if(data) {
@@ -700,8 +684,6 @@ int main(int argc, char *argv[])
 			janus_pp_opus_close();
 		} else if(g711) {
 			janus_pp_g711_close();
-		} else if(g722) {
-			janus_pp_g722_close();
 		}
 	}
 	fclose(file);
