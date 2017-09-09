@@ -164,8 +164,14 @@ dir_target = $(directory)-$(wildcard $(directory))
 dir_present = $(directory)-$(directory)
 dir_absent = $(directory)-
 
+if WITH_SOURCE_DATE_EPOCH
+build_date = $(shell LC_ALL=C date --utc --date="@$(SOURCE_DATE_EPOCH)")
+else
+build_date = $(shell date)
+endif
+
 version.c: FORCE | $(dir_target)
-	date | awk 'BEGIN {} {print "const char *janus_build_git_time = \""$$0"\";"} END {} ' >> version.c
+	echo "$(build_date)" | awk 'BEGIN {} {print "const char *janus_build_git_time = \""$$0"\";"} END {} ' >> version.c
 
 $(dir_present):
 	`which git` rev-parse HEAD | awk 'BEGIN {print "#include \"version.h\""} {print "const char *janus_build_git_sha = \"" $$0"\";"} END {}' > version.c
@@ -396,6 +402,8 @@ man1_MANS += postprocessing/janus-pp-rec.1
 janus_pp_rec_SOURCES = \
 	postprocessing/pp-g711.c \
 	postprocessing/pp-g711.h \
+	postprocessing/pp-g722.c \
+	postprocessing/pp-g722.h \
 	postprocessing/pp-h264.c \
 	postprocessing/pp-h264.h \
 	postprocessing/pp-opus.c \

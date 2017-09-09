@@ -32,6 +32,9 @@
 ; videortpmap = RTP map of the video codec (e.g., VP8/90000)
 ; videobufferkf = yes|no (whether the plugin should store the latest
 ;		keyframe and send it immediately for new viewers, EXPERIMENTAL)
+; videosimulcast = yes|no (do|don't enable video simulcasting)
+; videoport2 = second local port for receiving video frames (only for rtp, and simulcasting)
+; videoport3 = third local port for receiving video frames (only for rtp, and simulcasting)
 ; dataport = local port for receiving data messages to relay
 ; dataiface = network interface or IP address to bind to, if any (binds to all otherwise)
 ; databuffermsg = yes|no (whether the plugin should store the latest
@@ -42,6 +45,11 @@
 ; rtsp_user = RTSP authorization username (only if type=rtsp)
 ; rtsp_pwd = RTSP authorization password (only if type=rtsp)
 ; rtspiface = network interface or IP address to bind to, if any (binds to all otherwise), when receiving RTSP streams
+;
+; Notice that, for 'rtsp' mountpoints, normally the plugin uses the exact
+; SDP rtpmap and fmtp attributes the remote camera or RTSP server sent.
+; In case the values set remotely are known to conflict with WebRTC viewers,
+; you can override both using the settings introduced above.
 ;
 ; To test the [gstreamer-sample] example, check the test_gstreamer.sh
 ; script in the plugins/streams folder. To test the live and on-demand
@@ -129,6 +137,7 @@ secret = adminpwd
 ; authentication will only work if you installed libcurl >= 7.45.0)
 ; NOTE WELL: the plugin does NOT transcode, so the RTSP stream MUST be
 ; in a format the browser can digest (e.g., VP8 or H.264 baseline for video)
+; Again, you can override rtpmap and/or fmtp, if needed
 ;
 ;[rtsp-test]
 ;type = rtsp
